@@ -12,30 +12,34 @@ pub use self::error::{Error, Result};
 use web::routes::{greeting, login};
 
 async fn response_mapper(res: Response) -> Response {
-    println!("Hello from the Response Mapper");
-    println!();
+	println!("Hello from the Response Mapper");
+	println!();
 
-    res
+	res
 }
 
 #[tokio::main]
 async fn main() {
-    assert!(
-        core::mem::size_of::<u64>() >= core::mem::size_of::<u128>(),
-        "machine uses greater than 64 bit architecture"
-    );
+	assert!(
+		core::mem::size_of::<u64>() >= core::mem::size_of::<u128>(),
+		"machine uses greater than 64 bit architecture"
+	);
 
-    let routes = Router::new()
-        .merge(greeting::routes())
-        .merge(login::routes())
-        // layers run from bottom to top
-        .layer(middleware::map_response(response_mapper))
-        .layer(tower_cookies::CookieManagerLayer::new())
-        .fallback_service(ServeDir::new("public/"));
+	let routes = Router::new()
+		.merge(greeting::routes())
+		.merge(login::routes())
+		// layers run from bottom to top
+		.layer(middleware::map_response(response_mapper))
+		.layer(tower_cookies::CookieManagerLayer::new())
+		.fallback_service(ServeDir::new("public/"));
 
-    let address = SocketAddr::from(([127, 0, 0, 1], 8080));
-    let listener = TcpListener::bind(address).await.unwrap();
-    println!("Listening on http://{address}");
+	let address = SocketAddr::from(([127, 0, 0, 1], 8080));
+	let listener = TcpListener::bind(address)
+		.await
+		.unwrap();
+	println!("Listening on http://{address}");
 
-    serve(listener, routes.into_make_service()).await.unwrap();
+	serve(listener, routes.into_make_service())
+		.await
+		.unwrap();
 }
