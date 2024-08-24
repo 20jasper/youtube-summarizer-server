@@ -1,0 +1,42 @@
+name: verify
+
+on:
+  pull_request:
+    branches:
+      - main
+      - "**"
+  push:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+  TOOLCHAIN: stable
+
+jobs:
+  ci:
+    timeout-minutes: 30
+    name: verify
+    runs-on: ubuntu-latest
+
+    env:
+      RUSTFLAGS: "-Dwarnings"
+
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+      - name: update rust
+        run: rustup update ${{ env.TOOLCHAIN }} && rustup default ${{ env.TOOLCHAIN }}
+      - name: Install just
+        uses: taiki-e/install-action@just
+      - name: Configure Dependency Caching
+        uses: Swatinem/rust-cache@v2
+
+      - name: check formatting
+        run: just format-check
+      - name: lint
+        run: just lint
+      - name: test
+        run: cargo test --verbose
+      - name: build
+        run: cargo build --release --verbose
