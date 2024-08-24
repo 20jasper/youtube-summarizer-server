@@ -6,6 +6,8 @@ edition = "2021"
 [dependencies]
 axum = { version = "0.7.4", features = ["json"] }
 axum-macros = "0.4.1"
+regex = "1.10.6"
+reqwest = { version = "0.12.7", features = ["json"] }
 serde = { version = "1.0.196", features = ["derive"] }
 serde_json = "1.0.109"
 tokio = { version = "1.35.1", features = ["full"] }
@@ -46,6 +48,7 @@ mod_module_files = "deny"
 pedantic = { level = "warn", priority = -1 }
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
+must_use_candidate = "allow"
 # cargo
 negative_feature_names = "warn"
 redundant_feature_names = "warn"
