@@ -2,6 +2,7 @@ use core::str;
 use regex::Regex;
 use reqwest::Url;
 use std::borrow::Cow;
+use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
@@ -14,11 +15,10 @@ const YTDLP: &str = "yt-dlp";
 const RETRIES: &str = "10";
 /// <https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#output-template-examples>
 const OUTPUT_TEMPLATE: &str = "%(id)s";
-const OUTPUT_PATH: &str = "./transcripts";
-
-const WRITE_DIR: &str = "./dist";
 
 pub fn get_by_url(url: &str) -> Result<String> {
+	let output_path = env::var("OUTPUT_PATH")?;
+
 	let mut binding = Command::new(YTDLP);
 	let cmd = binding.args([
 		"--print",
@@ -36,7 +36,7 @@ pub fn get_by_url(url: &str) -> Result<String> {
 		"--output",
 		OUTPUT_TEMPLATE,
 		"--paths",
-		OUTPUT_PATH,
+		&output_path,
 		"-i",
 		url,
 	]);
@@ -93,12 +93,14 @@ pub fn clean_vtt(transcript: &str) -> String {
 }
 
 pub fn get_write_path(url: &str) -> Result<PathBuf> {
+	let write_dir = env::var("WRITE_DIR")?;
+
 	let parsed_url = url.parse::<Url>()?;
 	let video_id = parsed_url
 		.query_pairs()
 		.find(|(key, _)| key == "v")
 		.map_or("default".into(), |(_, id)| id);
-	let write_dir = PathBuf::from(WRITE_DIR);
+	let write_dir = PathBuf::from(write_dir);
 	let mut write_path = write_dir.join(video_id.into_owned());
 	write_path.set_extension("md");
 
