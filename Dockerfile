@@ -17,16 +17,15 @@ ADD https://github.com/yt-dlp/yt-dlp/releases/download/2024.08.06/yt-dlp_linux /
 # Leverage a bind mount to the src directory to avoid having to copy the
 # source code into the container. Once built, copy the executable to an
 # output directory before the cache mounted /app/target is unmounted.
-ARG RAILWAY_SERVICE_ID = ${APP_NAME}
 ARG CARGO_CACHE = /usr/local/cargo/registry/
 ARG GIT_CACHE = /usr/local/cargo/git/db
 ARG TARGET_CACHE = /app/target/
 RUN --mount=type=bind,source=src,target=src \
     --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
     --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
-    --mount=type=cache,id=${RAILWAY_SERVICE_ID}-${TARGET_CACHE},target=${TARGET_CACHE} \
-    --mount=type=cache,id=${RAILWAY_SERVICE_ID}-${GIT_CACHE},target=${GIT_CACHE} \
-    --mount=type=cache,id=${RAILWAY_SERVICE_ID}-${CARGO_REGISTRY},target=${CARGO_REGISTRY} \
+    --mount=type=cache,id=${APP_NAME}-${TARGET_CACHE},target=${TARGET_CACHE} \
+    --mount=type=cache,id=${APP_NAME}-${GIT_CACHE},target=${GIT_CACHE} \
+    --mount=type=cache,id=${APP_NAME}-${CARGO_REGISTRY},target=${CARGO_REGISTRY} \
     cargo build --locked --release && \
     cp ./target/release/$APP_NAME /bin/server
 
