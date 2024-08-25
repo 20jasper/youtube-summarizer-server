@@ -17,9 +17,9 @@ ADD https://github.com/yt-dlp/yt-dlp/releases/download/2024.08.06/yt-dlp_linux /
 # Leverage a bind mount to the src directory to avoid having to copy the
 # source code into the container. Once built, copy the executable to an
 # output directory before the cache mounted /app/target is unmounted.
-ARG CARGO_CACHE = /usr/local/cargo/registry/
-ARG GIT_CACHE = /usr/local/cargo/git/db
-ARG TARGET_CACHE = /app/target/
+ARG CARGO_CACHE=/usr/local/cargo/registry/
+ARG GIT_CACHE=/usr/local/cargo/git/db
+ARG TARGET_CACHE=/app/target/
 RUN --mount=type=bind,source=src,target=src \
     --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
     --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
