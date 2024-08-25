@@ -17,7 +17,7 @@ const RETRIES: &str = "10";
 const OUTPUT_TEMPLATE: &str = "%(id)s";
 
 pub fn get_by_url(url: &str) -> Result<String> {
-	let output_path = env::var("OUTPUT_PATH")?;
+	let output_path = env::var("OUTPUT_PATH").unwrap_or_else(|_| "./transcripts".to_string());
 
 	let mut binding = Command::new(YTDLP);
 	let cmd = binding.args([
@@ -93,7 +93,7 @@ pub fn clean_vtt(transcript: &str) -> String {
 }
 
 pub fn get_write_path(url: &str) -> Result<PathBuf> {
-	let write_dir = env::var("WRITE_DIR")?;
+	let write_dir = env::var("WRITE_DIR").unwrap_or_else(|_| "./dist".to_string());
 
 	let parsed_url = url.parse::<Url>()?;
 	let video_id = parsed_url
