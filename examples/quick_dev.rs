@@ -3,7 +3,7 @@ use serde_json::json;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	let hc = httpc_test::new_client("http://localhost:8080")?;
+	let hc = httpc_test::new_client("http://localhost:6981")?;
 
 	hc.do_post(
 		"/transcript",
@@ -12,6 +12,8 @@ async fn main() -> Result<()> {
 	.await?
 	.print()
 	.await?;
+
+	hc.do_get("/").await?.print().await?;
 
 	Ok(())
 }
