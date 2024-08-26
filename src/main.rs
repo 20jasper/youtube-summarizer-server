@@ -1,6 +1,6 @@
 use core::net::SocketAddr;
 
-use axum::{middleware, response::Response, serve, Router};
+use axum::{middleware, response::Response, routing::get, serve, Router};
 use tokio::net::TcpListener;
 use tower_http::services::ServeDir;
 
@@ -21,6 +21,7 @@ async fn response_mapper(res: Response) -> Response {
 #[tokio::main]
 async fn main() {
 	let routes = Router::new()
+		.route("/", get(|| async { "hello world" }))
 		.merge(transcript::routes())
 		.merge(login::routes())
 		// layers run from bottom to top
