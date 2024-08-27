@@ -7,7 +7,8 @@ FROM rust:${RUST_VERSION} AS build
 ARG APP_NAME
 WORKDIR /app
 
-ADD https://github.com/yt-dlp/yt-dlp/releases/download/2024.08.06/yt-dlp_linux /bin/
+ARG YT_DLP_NAME=yt-dlp_linux
+ADD https://github.com/yt-dlp/yt-dlp/releases/download/2024.08.06/${YT_DLP_NAME} /bin/yt-dlp
 
 # Build the application.
 # Leverage a cache mount to /usr/local/cargo/registry/
@@ -34,7 +35,7 @@ FROM debian:12.6-slim AS final
 
 COPY --from=build /bin/server /bin/
 
-COPY --chmod=0755 --from=build /bin/yt-dlp_linux /bin/yt-dlp
+COPY --chmod=0755 --from=build /bin/yt-dlp /bin/
 
 ARG UID=10001
 RUN adduser \

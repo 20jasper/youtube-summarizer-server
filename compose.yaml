@@ -12,6 +12,10 @@ services:
     build:
       context: .
       target: final
+      args:
+        # yt-dlp_linux_aarch64
+        # yt-dlp_linux
+        - YT_DLP_NAME=yt-dlp_linux
     ports:
       - 6981:8080
     environment:
