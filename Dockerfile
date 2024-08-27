@@ -32,8 +32,7 @@ FROM python:3.12.5-slim-bookworm AS final
 
 COPY --from=build /bin/server /bin/
 
-ARG YT_DLP_NAME=yt-dlp
-ADD --chmod=755 https://github.com/yt-dlp/yt-dlp/releases/download/2024.08.06/${YT_DLP_NAME} /bin/yt-dlp
+RUN pip install yt-dlp
 
 ARG UID=10001
 RUN adduser \
