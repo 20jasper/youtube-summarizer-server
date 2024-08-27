@@ -31,7 +31,7 @@ RUN --mount=type=bind,source=src,target=src \
     cp ./target/release/$APP_NAME /bin/server
 
 
-FROM debian:12.6-slim AS final
+FROM python:3.12.5-bullseye AS final
 
 COPY --from=build /bin/server /bin/
 
