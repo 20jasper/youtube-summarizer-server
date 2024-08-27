@@ -33,7 +33,7 @@ RUN --mount=type=bind,source=src,target=src \
 
 FROM debian:12.6-slim AS final
 
-RUN apt install file -y
+RUN sudo apt install file -y
 
 COPY --from=build /bin/server /bin/
 
