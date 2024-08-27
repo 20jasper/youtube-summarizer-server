@@ -7,7 +7,7 @@ FROM rust:${RUST_VERSION} AS build
 ARG APP_NAME
 WORKDIR /app
 
-ARG YT_DLP_NAME=yt-dlp_linux
+ARG YT_DLP_NAME=yt-dlp
 ADD https://github.com/yt-dlp/yt-dlp/releases/download/2024.08.06/${YT_DLP_NAME} /bin/yt-dlp
 
 # Build the application.
