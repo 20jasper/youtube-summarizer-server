@@ -7,9 +7,6 @@ FROM rust:${RUST_VERSION} AS build
 ARG APP_NAME
 WORKDIR /app
 
-ARG YT_DLP_NAME=yt-dlp
-ADD https://github.com/yt-dlp/yt-dlp/releases/download/2024.08.06/${YT_DLP_NAME} /bin/yt-dlp
-
 # Build the application.
 # Leverage a cache mount to /usr/local/cargo/registry/
 # for downloaded dependencies, a cache mount to /usr/local/cargo/git/db
@@ -31,11 +28,12 @@ RUN --mount=type=bind,source=src,target=src \
     cp ./target/release/$APP_NAME /bin/server
 
 
-FROM python:3.12.5-bullseye AS final
+FROM python:3.12.5-slim-bookworm AS final
 
 COPY --from=build /bin/server /bin/
 
-COPY --chmod=0755 --from=build /bin/yt-dlp /bin/
+ARG YT_DLP_NAME=yt-dlp
+ADD --chmod=755 https://github.com/yt-dlp/yt-dlp/releases/download/2024.08.06/${YT_DLP_NAME} /bin/yt-dlp
 
 ARG UID=10001
 RUN adduser \
