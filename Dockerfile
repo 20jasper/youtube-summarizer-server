@@ -33,6 +33,8 @@ RUN --mount=type=bind,source=src,target=src \
 
 FROM debian:12.6-slim AS final
 
+RUN apt install file -y
+
 COPY --from=build /bin/server /bin/
 
 COPY --chmod=0755 --from=build /bin/yt-dlp /bin/
