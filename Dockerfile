@@ -55,9 +55,7 @@ ARG YOUTUBE_USERNAME
 ARG YOUTUBE_PASSWORD
 RUN test -n "$YOUTUBE_PASSWORD" || (echo "YOUTUBE_PASSWORD not set" && false) && \
     test -n "$YOUTUBE_USERNAME" || (echo "YOUTUBE_USERNAME not set" && false) && \
-    echo \
-    'machine youtube login ${YOUTUBE_USERNAME} password ${YOUTUBE_PASSWORD}' \
-    > /var/.netrc && \
+    echo 'machine youtube login ${YOUTUBE_USERNAME} password ${YOUTUBE_PASSWORD}' >> /var/.netrc && \
     chmod 666 /var/.netrc
 
 USER appuser
