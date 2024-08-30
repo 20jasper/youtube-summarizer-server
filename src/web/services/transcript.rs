@@ -7,6 +7,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use std::process::Output;
+use std::process::Stdio;
 
 use std::error::Error;
 pub type Result<T> = core::result::Result<T, Box<dyn Error>>;
@@ -19,8 +20,8 @@ const OUTPUT_TEMPLATE: &str = "%(id)s";
 pub fn get_by_url(url: &str) -> Result<String> {
 	let output_path = env::var("OUTPUT_PATH").unwrap_or_else(|_| "./transcripts".to_string());
 
-	let mut binding = Command::new(YTDLP);
-	let cmd = binding.args([
+	let mut cmd = Command::new(YTDLP);
+	let cmd = cmd.args([
 		"--print",
 		"filename",
 		"--no-simulate",
@@ -69,6 +70,21 @@ pub fn get_by_url(url: &str) -> Result<String> {
 	let transcript = fs::read_to_string(&path)
 		.map_err(|e| format!("could not find path {}: {e}", path.display()))?;
 	Ok(transcript)
+}
+
+pub fn authorize() -> Result<()> {
+	let mut cmd = Command::new(YTDLP);
+	cmd.args([
+		"--username",
+		"oauth2",
+		"--password",
+		"''",
+		"https://www.youtube.com/",
+	]);
+
+	cmd.stdout(Stdio::inherit()).output()?;
+
+	Ok(())
 }
 
 /// remove timestamps and duplicate lines

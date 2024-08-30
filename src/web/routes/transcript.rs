@@ -1,9 +1,14 @@
-use axum::{routing::post, Json, Router};
+use axum::{
+	routing::{get, post},
+	Json, Router,
+};
 use axum_macros::debug_handler;
 use serde::Deserialize;
 use serde_json::{json, Value};
 
-use crate::web::services::transcript::{self, clean_vtt};
+use crate::web::services;
+use crate::web::services::transcript;
+use crate::web::services::transcript::clean_vtt;
 
 #[derive(Deserialize)]
 struct TranscriptParams {
@@ -23,6 +28,17 @@ async fn transcript(Json(TranscriptParams { url, raw }): Json<TranscriptParams>)
 	Json(json!({ "url": url, "transcript": transcript }))
 }
 
+#[debug_handler]
+async fn authorize() -> Json<Value> {
+	println!("authorize");
+
+	services::transcript::authorize().unwrap();
+
+	Json(json!({ "message": "please check the server logs"}))
+}
+
 pub fn routes() -> Router {
-	Router::new().route("/transcript", post(transcript))
+	Router::new()
+		.route("/transcript", post(transcript))
+		.route("/authorize", get(authorize))
 }
