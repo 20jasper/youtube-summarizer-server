@@ -5,12 +5,9 @@ use serde_json::json;
 async fn main() -> Result<()> {
 	let hc = httpc_test::new_client("http://localhost:6981")?;
 
-	hc.do_get("/").await?.print().await?;
+	println!("time to make a req");
 
-	hc.do_get("/authorize")
-		.await?
-		.print()
-		.await?;
+	hc.do_get("/").await?.print().await?;
 
 	hc.do_post(
 		"/transcript",

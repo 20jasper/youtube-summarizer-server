@@ -44,10 +44,8 @@ pub async fn get_by_url(url: &str) -> Result<String> {
 			&output_path,
 			"-i",
 			&url,
-			"--username",
-			"oauth2",
-			"--password",
-			"''",
+			"--netrc-location",
+			"/var/.netrc",
 		]);
 
 		cmd.output()
@@ -77,21 +75,6 @@ pub async fn get_by_url(url: &str) -> Result<String> {
 	let transcript = fs::read_to_string(&path)
 		.map_err(|e| format!("could not find path {}: {e}", path.display()))?;
 	Ok(transcript)
-}
-
-pub fn authorize() -> Result<()> {
-	let mut cmd = Command::new(YTDLP);
-	cmd.args([
-		"--username",
-		"oauth2",
-		"--password",
-		"''",
-		"https://www.youtube.com/",
-	]);
-
-	cmd.stdout(Stdio::inherit()).output()?;
-
-	Ok(())
 }
 
 /// remove timestamps and duplicate lines
