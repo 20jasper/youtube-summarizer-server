@@ -22,14 +22,29 @@ struct TranscriptParams {
 }
 
 #[debug_handler]
-async fn transcript(Json(TranscriptParams { url, raw }): Json<TranscriptParams>) -> Json<Value> {
+async fn transcript(
+	Json(TranscriptParams { url, raw }): Json<TranscriptParams>,
+) -> (StatusCode, Json<Value>) {
 	println!("post transcript: {url:?}, raw {raw:?}");
 
-	let mut transcript = transcript::get_by_url(&url).unwrap();
-	if !raw {
-		transcript = clean_vtt(&transcript);
+	if let Ok(transcript) = transcript::get_by_url(&url).await {
+		println!("got transcript");
+		(
+			StatusCode::OK,
+			Json(json!(
+					{
+						"url": url,
+						"transcript": if raw {transcript} else {clean_vtt(&transcript)}
+					}
+			)),
+		)
+	} else {
+		println!("failed to get transcript");
+		(
+			StatusCode::INTERNAL_SERVER_ERROR,
+			Json(json!({"message": "internal server error"})),
+		)
 	}
-	Json(json!({ "url": url, "transcript": transcript }))
 }
 
 #[debug_handler]

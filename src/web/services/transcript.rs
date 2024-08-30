@@ -1,4 +1,5 @@
 use core::str;
+use core::time::Duration;
 use regex::Regex;
 use reqwest::Url;
 use std::borrow::Cow;
@@ -8,6 +9,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::process::Output;
 use std::process::Stdio;
+use tokio::time::timeout;
 
 use std::error::Error;
 pub type Result<T> = core::result::Result<T, Box<dyn Error>>;
@@ -17,40 +19,45 @@ const RETRIES: &str = "10";
 /// <https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#output-template-examples>
 const OUTPUT_TEMPLATE: &str = "%(id)s";
 
-pub fn get_by_url(url: &str) -> Result<String> {
+pub async fn get_by_url(url: &str) -> Result<String> {
 	let output_path = env::var("OUTPUT_PATH").unwrap_or_else(|_| "./transcripts".to_string());
 
-	let mut cmd = Command::new(YTDLP);
-	let cmd = cmd.args([
-		"--print",
-		"filename",
-		"--no-simulate",
-		"--write-subs",
-		"--write-auto-subs",
-		"--sub-langs",
-		"en*",
-		"--sub-format",
-		"vtt",
-		"--skip-download",
-		"--retries",
-		RETRIES,
-		"--output",
-		OUTPUT_TEMPLATE,
-		"--paths",
-		&output_path,
-		"-i",
-		url,
-		"--username",
-		"oauth2",
-		"--password",
-		"''",
-	]);
+	let url = url.to_owned();
+	let join_handle = tokio::spawn(async move {
+		let mut cmd = Command::new(YTDLP);
+		let cmd = cmd.args([
+			"--print",
+			"filename",
+			"--no-simulate",
+			"--write-subs",
+			"--write-auto-subs",
+			"--sub-langs",
+			"en*",
+			"--sub-format",
+			"vtt",
+			"--skip-download",
+			"--retries",
+			RETRIES,
+			"--output",
+			OUTPUT_TEMPLATE,
+			"--paths",
+			&output_path,
+			"-i",
+			&url,
+			"--username",
+			"oauth2",
+			"--password",
+			"''",
+		]);
+
+		cmd.output()
+	});
 
 	let Output {
 		status,
 		stdout,
 		stderr,
-	} = cmd.output()?;
+	} = timeout(Duration::from_secs(10), join_handle).await???;
 
 	if !status.success() {
 		return Err(format!(
