@@ -32,7 +32,8 @@ FROM python:3.12.5-slim-bookworm AS final
 
 COPY --from=build /bin/server /bin/
 
-RUN pip install yt-dlp
+RUN pip install yt-dlp==2024.8.6 && \
+    pip install -U https://github.com/coletdjnz/yt-dlp-youtube-oauth2/archive/refs/heads/master.zip
 
 ARG UID=10001
 RUN adduser \

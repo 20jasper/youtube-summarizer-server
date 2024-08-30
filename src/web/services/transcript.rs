@@ -39,6 +39,10 @@ pub fn get_by_url(url: &str) -> Result<String> {
 		&output_path,
 		"-i",
 		url,
+		"--username",
+		"oauth2",
+		"--password",
+		"''",
 	]);
 
 	let Output {
