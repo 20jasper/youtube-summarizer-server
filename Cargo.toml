@@ -14,7 +14,7 @@ tokio = { version = "1.35.1", features = ["full", "time", "rt"] }
 tower-http = { version = "0.5.1", features = ["fs"] }
 
 [dev-dependencies]
-anyhow = "1.0.79"
+anyhow = "1.0.98"
 httpc-test = "0.1.1"
 
 [lints.rust]
