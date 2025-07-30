@@ -18,23 +18,26 @@ async fn transcript(
 ) -> (StatusCode, Json<Value>) {
 	println!("post transcript: {url:?}, raw {raw:?}");
 
-	if let Ok(transcript) = transcript::get_by_url(&url).await {
-		println!("got transcript");
-		(
-			StatusCode::OK,
-			Json(json!(
-					{
-						"url": url,
-						"transcript": if raw {transcript} else {clean_vtt(&transcript)}
-					}
-			)),
-		)
-	} else {
-		println!("failed to get transcript");
-		(
-			StatusCode::INTERNAL_SERVER_ERROR,
-			Json(json!({"message": "internal server error"})),
-		)
+	match transcript::get_by_url(&url).await {
+		Ok(transcript) => {
+			println!("got transcript");
+			(
+				StatusCode::OK,
+				Json(json!(
+						{
+							"url": url,
+							"transcript": if raw {transcript} else {clean_vtt(&transcript)}
+						}
+				)),
+			)
+		}
+		Err(e) => {
+			println!("failed to get transcript {e:?}");
+			(
+				StatusCode::INTERNAL_SERVER_ERROR,
+				Json(json!({"message": "internal server error"})),
+			)
+		}
 	}
 }
 
