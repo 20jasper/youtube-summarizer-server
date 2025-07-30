@@ -1,3 +1,4 @@
+use crate::error::Result;
 use core::str;
 use core::time::Duration;
 use regex::Regex;
@@ -9,9 +10,6 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::process::Output;
 use tokio::time::timeout;
-
-use std::error::Error;
-pub type Result<T> = core::result::Result<T, Box<dyn Error>>;
 
 const YTDLP: &str = "yt-dlp";
 const RETRIES: &str = "10";

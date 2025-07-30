@@ -7,7 +7,6 @@ use tower_http::services::ServeDir;
 pub mod error;
 pub mod web;
 
-pub use self::error::{Error, Result};
 use web::routes::transcript;
 
 async fn response_mapper(res: Response) -> Response {
