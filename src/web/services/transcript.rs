@@ -8,7 +8,6 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use std::process::Output;
-use std::process::Stdio;
 use tokio::time::timeout;
 
 use std::error::Error;
@@ -44,8 +43,6 @@ pub async fn get_by_url(url: &str) -> Result<String> {
 			&output_path,
 			"-i",
 			&url,
-			"--netrc-location",
-			"/var/.netrc",
 		]);
 
 		cmd.output()

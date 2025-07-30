@@ -11,7 +11,6 @@ reqwest = { version = "0.12.7", features = ["json"] }
 serde = { version = "1.0.196", features = ["derive"] }
 serde_json = "1.0.109"
 tokio = { version = "1.35.1", features = ["full", "time", "rt"] }
-tower-cookies = "0.10.0"
 tower-http = { version = "0.5.1", features = ["fs"] }
 
 [dev-dependencies]
@@ -78,7 +77,6 @@ rc_buffer = "warn"
 rc_mutex = "warn"
 same_name_method = "warn"
 semicolon_outside_block = "warn"
-std_instead_of_core = "warn"
 string_lit_chars_any = "warn"
 suspicious_xor_used_as_pow = "warn"
 tests_outside_test_module = "warn"
