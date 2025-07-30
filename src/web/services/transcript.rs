@@ -43,8 +43,6 @@ pub async fn get_by_url(url: &str) -> Result<String> {
 			&output_path,
 			"-i",
 			&url,
-			"--netrc-location",
-			"/var/.netrc",
 		]);
 
 		cmd.output()
