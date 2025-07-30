@@ -17,9 +17,18 @@ const YTDLP: &str = "yt-dlp";
 const RETRIES: &str = "10";
 /// <https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#output-template-examples>
 const OUTPUT_TEMPLATE: &str = "%(id)s";
+const PROXY: &str = "PROXY";
 
 pub async fn get_by_url(url: &str) -> Result<String> {
+	// ytdlp will write to a file in the output dir
 	let output_path = env::var("OUTPUT_PATH").unwrap_or_else(|_| "./transcripts".to_string());
+
+	// TODO try to read from cache instead
+	// if fs::exists(&output_path)? {
+	// 	return Ok("exists in dir already!".into());
+	// }
+
+	let proxy = env::var(PROXY)?;
 
 	let url = url.to_owned();
 	let join_handle = tokio::spawn(async move {
@@ -39,6 +48,8 @@ pub async fn get_by_url(url: &str) -> Result<String> {
 			RETRIES,
 			"--output",
 			OUTPUT_TEMPLATE,
+			"--proxy",
+			&proxy,
 			"--paths",
 			&output_path,
 			"-i",
