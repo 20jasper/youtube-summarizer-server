@@ -52,7 +52,7 @@ pub async fn get_by_url(url: &str) -> Result<String> {
 		status,
 		stdout,
 		stderr,
-	} = timeout(Duration::from_secs(10), join_handle).await???;
+	} = timeout(Duration::from_secs(20), join_handle).await???;
 
 	if !status.success() {
 		return Err(format!(
