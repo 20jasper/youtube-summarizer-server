@@ -17,9 +17,18 @@ const YTDLP: &str = "yt-dlp";
 const RETRIES: &str = "10";
 /// <https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#output-template-examples>
 const OUTPUT_TEMPLATE: &str = "%(id)s";
+const PROXY: &str = "PROXY";
 
 pub async fn get_by_url(url: &str) -> Result<String> {
+	// ytdlp will write to a file in the output dir
 	let output_path = env::var("OUTPUT_PATH").unwrap_or_else(|_| "./transcripts".to_string());
+
+	// TODO try to read from cache instead
+	// if fs::exists(&output_path)? {
+	// 	return Ok("exists in dir already!".into());
+	// }
+
+	let proxy = env::var(PROXY)?;
 
 	let url = url.to_owned();
 	let join_handle = tokio::spawn(async move {
@@ -39,6 +48,8 @@ pub async fn get_by_url(url: &str) -> Result<String> {
 			RETRIES,
 			"--output",
 			OUTPUT_TEMPLATE,
+			"--proxy",
+			&proxy,
 			"--paths",
 			&output_path,
 			"-i",
@@ -52,7 +63,7 @@ pub async fn get_by_url(url: &str) -> Result<String> {
 		status,
 		stdout,
 		stderr,
-	} = timeout(Duration::from_secs(10), join_handle).await???;
+	} = timeout(Duration::from_secs(20), join_handle).await???;
 
 	if !status.success() {
 		return Err(format!(
@@ -99,19 +110,22 @@ pub fn clean_vtt(transcript: &str) -> String {
 		.join(" ")
 }
 
-pub fn get_write_path(url: &str) -> Result<PathBuf> {
-	let write_dir = env::var("WRITE_DIR").unwrap_or_else(|_| "./dist".to_string());
-
-	let parsed_url = url.parse::<Url>()?;
-	let video_id = parsed_url
+fn get_video_id(url: &str) -> Option<String> {
+	url.parse::<Url>()
+		.ok()?
 		.query_pairs()
 		.find(|(key, _)| key == "v")
-		.map_or("default".into(), |(_, id)| id);
-	let write_dir = PathBuf::from(write_dir);
-	let mut write_path = write_dir.join(video_id.into_owned());
+		.map(|(_, id)| id.into_owned())
+}
+
+pub fn get_write_path(url: &str) -> Option<PathBuf> {
+	let write_dir: PathBuf = env::var("WRITE_DIR")
+		.unwrap_or_else(|_| "./dist".to_string())
+		.into();
+	let mut write_path = write_dir.join(get_video_id(url)?);
 	write_path.set_extension("md");
 
-	Ok(write_path)
+	Some(write_path)
 }
 
 #[cfg(test)]
