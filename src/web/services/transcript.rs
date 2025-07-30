@@ -110,19 +110,22 @@ pub fn clean_vtt(transcript: &str) -> String {
 		.join(" ")
 }
 
-pub fn get_write_path(url: &str) -> Result<PathBuf> {
-	let write_dir = env::var("WRITE_DIR").unwrap_or_else(|_| "./dist".to_string());
-
-	let parsed_url = url.parse::<Url>()?;
-	let video_id = parsed_url
+fn get_video_id(url: &str) -> Option<String> {
+	url.parse::<Url>()
+		.ok()?
 		.query_pairs()
 		.find(|(key, _)| key == "v")
-		.map_or("default".into(), |(_, id)| id);
-	let write_dir = PathBuf::from(write_dir);
-	let mut write_path = write_dir.join(video_id.into_owned());
+		.map(|(_, id)| id.into_owned())
+}
+
+pub fn get_write_path(url: &str) -> Option<PathBuf> {
+	let write_dir: PathBuf = env::var("WRITE_DIR")
+		.unwrap_or_else(|_| "./dist".to_string())
+		.into();
+	let mut write_path = write_dir.join(get_video_id(url)?);
 	write_path.set_extension("md");
 
-	Ok(write_path)
+	Some(write_path)
 }
 
 #[cfg(test)]
