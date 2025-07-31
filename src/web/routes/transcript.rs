@@ -12,7 +12,7 @@ struct TranscriptParams {
 }
 
 #[debug_handler]
-async fn transcript(
+async fn summarize(
 	Json(TranscriptParams { url, raw }): Json<TranscriptParams>,
 ) -> (StatusCode, Json<Value>) {
 	println!("post transcript: {url:?}, raw {raw:?}");
@@ -41,5 +41,5 @@ async fn transcript(
 }
 
 pub fn routes() -> Router {
-	Router::new().route("/transcript", post(transcript))
+	Router::new().route("/summary", post(summarize))
 }
