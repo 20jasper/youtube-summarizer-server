@@ -109,25 +109,16 @@ pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 pub async fn summarize_by_url(url: &str) -> Result<String> {
 	println!("summarizing {url:?}");
 
-	let transcript = get_transcript_by_url(url, false).await?;
-
-	let config::Completion {
-		api_key,
-		model,
-		url: client_url,
-		..
-	} = config::Completion::from_env()?;
-	let client = CompletionClient::new(api_key, client_url, model);
-	let res = client
-		.post(ARTICLE_TEMPLATE, &transcript)
+	let summary = CompletionClient::from_env()?
+		.post(ARTICLE_TEMPLATE, &get_transcript_by_url(url, false).await?)
 		.await?;
 
 	let path = get_artifact_path(url, SUMMARY_EXT).expect("video id must be valid at this point");
-	fs::write(path, &res)?;
+	fs::write(path, &summary)?;
 
 	println!("done summarizing {url:?}");
 
-	Ok(res)
+	Ok(summary)
 }
 
 /// remove timestamps and duplicate lines
