@@ -28,7 +28,7 @@ brief sentence
 - Concise and to the point
 - no flowery language
 - use brief sentences and bullets instead of paragraphs
-- do not include links not in the original transcript
+- do not include links
 - summary should be informative and act as a replacement for the original transcript to the point that the user doesn't have to go back to read the transcript
 - Summary should not mention the author, speaker, or article
 - should act as independent writing without referencing the original
@@ -36,7 +36,6 @@ brief sentence
 <badExample>
 This deep dive explores advanced TypeScript type system concepts to implement compile-time addition using types only—covering generics, conditionals, recursion, variadic tuple types, inference, mapped types, and string manipulation to simulate number operations at the type level.
 
-Full source: [GitHub Link]
 </badExample>
 
 <goodExample>
