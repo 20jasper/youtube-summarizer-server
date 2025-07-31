@@ -46,6 +46,13 @@ pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 pub async fn summarize_by_url(url: &str) -> Result<String> {
 	println!("summarizing {url:?}");
 
+	if let Some(summary) = cache::get(&cache::Key {
+		url: Url::parse(url)?,
+		state: TranscriptState::Summarized,
+	}) {
+		return Ok(summary);
+	}
+
 	let summary = CompletionClient::from_env()?
 		.post(ARTICLE_TEMPLATE, &get_transcript_by_url(url, false).await?)
 		.await?;
