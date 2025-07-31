@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
 		base_url,
 	} = Config::build().unwrap();
 
-	let transcript = transcript::get_by_url(&url).await?;
+	let transcript = transcript::summarize_by_url(&url).await?;
 	let text = transcript::clean_vtt(&transcript);
 
 	let client = CompletionClient::build(api_key, &base_url, model)?;

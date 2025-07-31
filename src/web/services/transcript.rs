@@ -20,9 +20,26 @@ const RETRIES: &str = "10";
 const OUTPUT_TEMPLATE: &str = "%(id)s";
 const PROXY: &str = "PROXY";
 
-pub async fn get_by_url(url: &str) -> Result<String> {
+const RAW_EXT: &str = "en.vtt";
+const CLEAN_EXT: &str = "en.clean";
+const SUMMARY_EXT: &str = "md";
+
+fn get_artifact_dir() -> PathBuf {
+	env::var("OUTPUT_PATH")
+		.unwrap_or_else(|_| "./transcripts".to_string())
+		.into()
+}
+
+fn get_artifact_path(url: &str, extension: &str) -> Option<PathBuf> {
+	let mut path = get_artifact_dir().join(get_video_id(url)?);
+	path.set_extension(extension);
+
+	Some(path)
+}
+
+pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 	// ytdlp will write to a file in the output dir
-	let output_path = env::var("OUTPUT_PATH").unwrap_or_else(|_| "./transcripts".to_string());
+	let output_path = get_artifact_dir();
 
 	// TODO try to read from cache instead
 	// if fs::exists(&output_path)? {
@@ -31,12 +48,10 @@ pub async fn get_by_url(url: &str) -> Result<String> {
 
 	let proxy = env::var(PROXY).map_err(|_| "proxy is not set")?;
 
-	let url = url.to_owned();
+	let owned_url = url.to_owned();
 	let join_handle = tokio::spawn(async move {
 		let mut cmd = Command::new(YTDLP);
 		let cmd = cmd.args([
-			"--print",
-			"filename",
 			"--no-simulate",
 			"--write-subs",
 			"--write-auto-subs",
@@ -52,19 +67,19 @@ pub async fn get_by_url(url: &str) -> Result<String> {
 			"--proxy",
 			&proxy,
 			"--paths",
-			&output_path,
+			output_path
+				.as_path()
+				.to_str()
+				.expect("path should always be valid utf8"),
 			"-i",
-			&url,
+			&owned_url,
 		]);
 
 		cmd.output()
 	});
 
-	let Output {
-		status,
-		stdout,
-		stderr,
-	} = timeout(Duration::from_secs(20), join_handle).await???;
+	// TODO service unavailable code if takes longer than timeout. This will depend based on proxy and server location
+	let Output { status, stderr, .. } = timeout(Duration::from_secs(30), join_handle).await???;
 
 	if !status.success() {
 		return Err(format!(
@@ -77,16 +92,22 @@ pub async fn get_by_url(url: &str) -> Result<String> {
 		.into());
 	}
 
-	let stdout = str::from_utf8(&stdout)?;
-	let mut path = PathBuf::from(stdout.trim_end());
-	path.set_extension("en.vtt");
+	let raw_path = get_artifact_path(url, RAW_EXT).expect("video id must exist at this point");
 
-	let transcript = fs::read_to_string(&path)
-		.map_err(|e| format!("could not find path {}: {e}", path.display()))?;
+	let transcript = fs::read_to_string(&raw_path)
+		.map_err(|e| format!("could not find path {}: {e}", raw_path.display()))?;
 
 	let clean = clean_vtt(&transcript);
-	path.set_extension("clean.en.vtt");
-	fs::write(&path, &clean).unwrap();
+	let clean_path = get_artifact_path(url, CLEAN_EXT).expect("video id must exist at this point");
+	// TODO more generic caching facade
+	fs::write(&clean_path, &clean)?;
+
+	println!("got the transcript!");
+	Ok(if raw { transcript } else { clean })
+}
+
+pub async fn summarize_by_url(url: &str) -> Result<String> {
+	let transcript = get_transcript_by_url(url, false).await?;
 
 	let Config {
 		api_key,
@@ -96,11 +117,11 @@ pub async fn get_by_url(url: &str) -> Result<String> {
 	} = Config::build().unwrap();
 	let client = CompletionClient::build(api_key, &base_url, model)?;
 	let res = client
-		.post(ARTICLE_TEMPLATE, &clean)
+		.post(ARTICLE_TEMPLATE, &transcript)
 		.await?;
 
-	path.set_extension("summary.md");
-	fs::write(path, &res).unwrap();
+	let path = get_artifact_path(url, SUMMARY_EXT).expect("video id must be valid at this point");
+	fs::write(path, &res)?;
 
 	Ok(res)
 }
