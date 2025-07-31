@@ -1,5 +1,4 @@
 use anyhow::Result;
-use serde_json::json;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -9,13 +8,10 @@ async fn main() -> Result<()> {
 
 	hc.do_get("/").await?.print().await?;
 
-	hc.do_post(
-		"/transcript",
-		json!({"url": "https://www.youtube.com/watch?v=dNY4FKXwTsM"}),
-	)
-	.await?
-	.print()
-	.await?;
+	hc.do_get("/summary?url=https://www.youtube.com/watch?v=dNY4FKXwTsM")
+		.await?
+		.print()
+		.await?;
 
 	Ok(())
 }
