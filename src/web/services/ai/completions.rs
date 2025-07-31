@@ -1,8 +1,11 @@
+use std::env;
+
 use derive_builder::Builder;
+use dotenvy::dotenv;
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::web::services::ai::deepinfra::{Message, Response};
 
 /// more documentation can be found here <https://deepinfra.com/meta-llama/Meta-Llama-3.1-70B-Instruct/api?version=25acb1b514688b222a02a89c6976a8d7ad0e017f#input-model>
@@ -58,16 +61,33 @@ impl CompletionRequestBuilder {
 pub struct CompletionClient {
 	model: String,
 	url: Url,
-	token: String,
+	api_key: String,
 }
 
 impl CompletionClient {
-	pub fn new(token: impl Into<String>, url: Url, model: impl Into<String>) -> Self {
-		Self {
-			model: model.into(),
+	pub fn from_env() -> Result<Self> {
+		const OPEN_AI_API_KEY: &str = "OPEN_AI_API_KEY";
+		const OPEN_AI_MODEL: &str = "OPEN_AI_MODEL";
+		const OPEN_AI_BASE_URL: &str = "OPEN_AI_BASE_URL";
+		const COMPLETIONS_PATH: &str = "chat/completions";
+
+		dotenv()?;
+
+		let api_key = env::var(OPEN_AI_API_KEY).map_err(|_| Error::EnvMissing(OPEN_AI_API_KEY))?;
+		let model = env::var(OPEN_AI_MODEL).map_err(|_| Error::EnvMissing(OPEN_AI_MODEL))?;
+		let base_url =
+			env::var(OPEN_AI_BASE_URL).map_err(|_| Error::EnvMissing(OPEN_AI_BASE_URL))?;
+
+		let url = base_url
+			.parse::<Url>()
+			.and_then(|x| x.join(COMPLETIONS_PATH))
+			.map_err(|_| "couldn't parse base uri")?;
+
+		Ok(Self {
+			model,
 			url,
-			token: token.into(),
-		}
+			api_key,
+		})
 	}
 
 	pub async fn post(&self, prompt: &str, text: &str) -> Result<String> {
@@ -89,7 +109,7 @@ impl CompletionClient {
 
 		let response = Client::new()
 			.post(self.url.as_ref())
-			.bearer_auth(&self.token)
+			.bearer_auth(&self.api_key)
 			.json(&payload)
 			.send()
 			.await?;

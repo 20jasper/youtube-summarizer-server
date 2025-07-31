@@ -31,7 +31,6 @@ ffi-unwind-calls = "warn"
 let-underscore-drop = "warn"
 missing-abi = "warn"
 non-ascii-idents = "warn"
-unreachable-pub = "warn"
 variant-size-differences = "warn"
 # groups
 unused = { level = "warn", priority = -1 }
