@@ -1,4 +1,4 @@
-use crate::config::Config;
+use crate::config;
 use crate::error::Result;
 use crate::web::services::ai::completions::CompletionClient;
 use crate::web::services::ai::prompt::ARTICLE_TEMPLATE;
@@ -109,12 +109,12 @@ pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 pub async fn summarize_by_url(url: &str) -> Result<String> {
 	let transcript = get_transcript_by_url(url, false).await?;
 
-	let Config {
+	let config::Completion {
 		api_key,
 		model,
 		base_url,
 		..
-	} = Config::build().unwrap();
+	} = config::Completion::build().unwrap();
 	let client = CompletionClient::build(api_key, &base_url, model)?;
 	let res = client
 		.post(ARTICLE_TEMPLATE, &transcript)
