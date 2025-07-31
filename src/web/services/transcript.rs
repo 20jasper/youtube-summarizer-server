@@ -36,6 +36,8 @@ fn get_artifact_path(url: &str, extension: &str) -> Option<PathBuf> {
 }
 
 pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
+	println!("getting transcript for {url:?}, raw {raw:?}");
+
 	// ytdlp will write to a file in the output dir
 	let output_path = get_artifact_dir();
 
@@ -105,6 +107,8 @@ pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 }
 
 pub async fn summarize_by_url(url: &str) -> Result<String> {
+	println!("summarizing {url:?}");
+
 	let transcript = get_transcript_by_url(url, false).await?;
 
 	let config::Completion {
@@ -120,6 +124,8 @@ pub async fn summarize_by_url(url: &str) -> Result<String> {
 
 	let path = get_artifact_path(url, SUMMARY_EXT).expect("video id must be valid at this point");
 	fs::write(path, &res)?;
+
+	println!("done summarizing {url:?}");
 
 	Ok(res)
 }
