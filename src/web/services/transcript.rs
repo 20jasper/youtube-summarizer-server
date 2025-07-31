@@ -1,7 +1,7 @@
-use crate::config::Config;
+use crate::config;
 use crate::error::Result;
-use crate::web::services::ai::completions::CompletionClient;
-use crate::web::services::ai::prompt::ARTICLE_TEMPLATE;
+use crate::web::services::ai::{completions::CompletionClient, prompt::ARTICLE_TEMPLATE};
+
 use core::str;
 use core::time::Duration;
 use regex::Regex;
@@ -15,10 +15,8 @@ use std::process::Output;
 use tokio::time::timeout;
 
 const YTDLP: &str = "yt-dlp";
-const RETRIES: &str = "10";
 /// <https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#output-template-examples>
 const OUTPUT_TEMPLATE: &str = "%(id)s";
-const PROXY: &str = "PROXY";
 
 const RAW_EXT: &str = "en.vtt";
 const CLEAN_EXT: &str = "en.clean";
@@ -46,7 +44,7 @@ pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 	// 	return Ok("exists in dir already!".into());
 	// }
 
-	let proxy = env::var(PROXY).map_err(|_| "proxy is not set")?;
+	let config::Youtube { retries, proxy } = config::Youtube::build().unwrap();
 
 	let owned_url = url.to_owned();
 	let join_handle = tokio::spawn(async move {
@@ -61,7 +59,7 @@ pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 			"vtt",
 			"--skip-download",
 			"--retries",
-			RETRIES,
+			retries.to_string().as_str(),
 			"--output",
 			OUTPUT_TEMPLATE,
 			"--proxy",
@@ -109,12 +107,12 @@ pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 pub async fn summarize_by_url(url: &str) -> Result<String> {
 	let transcript = get_transcript_by_url(url, false).await?;
 
-	let Config {
+	let config::Completion {
 		api_key,
 		model,
 		base_url,
 		..
-	} = Config::build().unwrap();
+	} = config::Completion::build().unwrap();
 	let client = CompletionClient::build(api_key, &base_url, model)?;
 	let res = client
 		.post(ARTICLE_TEMPLATE, &transcript)
