@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-ARG RUST_VERSION=1.80.1
+ARG RUST_VERSION=1.88.0
 ARG APP_NAME=youtube-summarizer-server
 
 FROM rust:${RUST_VERSION} AS build
