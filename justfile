@@ -1,6 +1,6 @@
 # build and run server on save
 dev:
-    cargo watch --poll -q -c -w src/ -x "run"
+    cargo watch --poll -q -c -w src/ -x "run --bin youtube-summarizer-server"
 
 # build and run example query on save
 example:
