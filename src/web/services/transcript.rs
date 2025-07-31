@@ -1,21 +1,23 @@
 use crate::error::Result;
 use crate::web::services::ai::{completions::CompletionClient, prompt::ARTICLE_TEMPLATE};
+use crate::web::services::cache;
 use crate::web::services::youtube::YTClient;
-use crate::web::services::{cache, youtube};
 
 use core::str;
 use core::time::Duration;
 use regex::Regex;
+use reqwest::Url;
 use std::borrow::Cow;
-use std::env;
-use std::fs;
-use std::path::PathBuf;
 use tokio::time::timeout;
 
-const CLEAN_EXT: &str = "en.clean";
-const SUMMARY_EXT: &str = "md";
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TranscriptState {
+	Raw,
+	Clean,
+	Summarized,
+}
 
-pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
+pub async fn get_transcript_by_url(url: &Url, raw: bool) -> Result<String> {
 	println!("getting transcript for {url:?}, raw {raw:?}");
 
 	let owned_url = url.to_owned();
@@ -29,25 +31,39 @@ pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 	.await???;
 
 	let clean = clean_vtt(&transcript);
-	let clean_path =
-		cache::get_artifact_path(url, CLEAN_EXT).expect("video id must exist at this point");
-	// TODO more generic caching facade
-	fs::write(&clean_path, &clean)?;
+	cache::put(
+		&cache::Key {
+			url: url.clone(),
+			state: TranscriptState::Clean,
+		},
+		&clean,
+	)?;
 
 	println!("got the transcript!");
 	Ok(if raw { transcript } else { clean })
 }
 
-pub async fn summarize_by_url(url: &str) -> Result<String> {
+pub async fn summarize_by_url(url: &Url) -> Result<String> {
 	println!("summarizing {url:?}");
+
+	if let Some(summary) = cache::get(&cache::Key {
+		url: url.clone(),
+		state: TranscriptState::Summarized,
+	}) {
+		return Ok(summary);
+	}
 
 	let summary = CompletionClient::from_env()?
 		.post(ARTICLE_TEMPLATE, &get_transcript_by_url(url, false).await?)
 		.await?;
 
-	let path =
-		cache::get_artifact_path(url, SUMMARY_EXT).expect("video id must be valid at this point");
-	fs::write(path, &summary)?;
+	cache::put(
+		&cache::Key {
+			url: url.clone(),
+			state: TranscriptState::Summarized,
+		},
+		&summary,
+	)?;
 
 	println!("done summarizing {url:?}");
 
@@ -77,16 +93,6 @@ pub fn clean_vtt(transcript: &str) -> String {
 		.filter(|l| !l.is_empty())
 		.collect::<Vec<_>>()
 		.join(" ")
-}
-
-pub fn get_write_path(url: &str) -> Option<PathBuf> {
-	let write_dir: PathBuf = env::var("WRITE_DIR")
-		.unwrap_or_else(|_| "./dist".to_string())
-		.into();
-	let mut write_path = write_dir.join(youtube::get_video_id(url)?);
-	write_path.set_extension("md");
-
-	Some(write_path)
 }
 
 #[cfg(test)]
@@ -123,13 +129,5 @@ an entire video for 30 minutes and then
 realizing<00:00:07.359><c> you</c><00:00:07.520><c> forgot</c><00:00:07.839><c> to</c><00:00:08.080><c> plug</c><00:00:08.280><c> in</c><00:00:08.440><c> your</c>";
 
 		assert_eq!(clean_vtt(vtt), "[Music] you know what's really not fun recording an entire video for 30 minutes and then");
-	}
-
-	#[test]
-	fn get_path_from_url() {
-		assert_eq!(
-			get_write_path("https://www.youtube.com?v=gamer").unwrap(),
-			PathBuf::from("./dist/gamer.md")
-		);
 	}
 }

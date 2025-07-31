@@ -14,6 +14,8 @@ pub enum Error {
 	#[from]
 	Reqwest(reqwest::Error),
 	#[from]
+	Url(url::ParseError),
+	#[from]
 	Timeout(Elapsed),
 	#[from]
 	Join(JoinError),
@@ -44,6 +46,7 @@ impl IntoResponse for Error {
 				(StatusCode::SERVICE_UNAVAILABLE, "Service Unavailable").into_response()
 			}
 			E::Timeout(_) => (StatusCode::GATEWAY_TIMEOUT, "Gateway Timeout").into_response(),
+			E::Url(_) => (StatusCode::BAD_REQUEST, "Invalid URL").into_response(),
 			E::Reqwest(_) | E::Join(_) | E::Io(_) | E::Custom(_) => {
 				(StatusCode::INTERNAL_SERVER_ERROR, "Unhandled Server Error").into_response()
 			}
