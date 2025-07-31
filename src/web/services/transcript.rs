@@ -1,15 +1,13 @@
 use crate::error::Result;
 use crate::web::services::ai::{completions::CompletionClient, prompt::ARTICLE_TEMPLATE};
+use crate::web::services::cache;
 use crate::web::services::youtube::YTClient;
-use crate::web::services::{cache, youtube};
 
 use core::str;
 use core::time::Duration;
 use regex::Regex;
 use reqwest::Url;
 use std::borrow::Cow;
-use std::env;
-use std::path::PathBuf;
 use tokio::time::timeout;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -90,16 +88,6 @@ pub fn clean_vtt(transcript: &str) -> String {
 		.join(" ")
 }
 
-pub fn get_write_path(url: &str) -> Option<PathBuf> {
-	let write_dir: PathBuf = env::var("WRITE_DIR")
-		.unwrap_or_else(|_| "./dist".to_string())
-		.into();
-	let mut write_path = write_dir.join(youtube::get_video_id(url)?);
-	write_path.set_extension("md");
-
-	Some(write_path)
-}
-
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -134,13 +122,5 @@ an entire video for 30 minutes and then
 realizing<00:00:07.359><c> you</c><00:00:07.520><c> forgot</c><00:00:07.839><c> to</c><00:00:08.080><c> plug</c><00:00:08.280><c> in</c><00:00:08.440><c> your</c>";
 
 		assert_eq!(clean_vtt(vtt), "[Music] you know what's really not fun recording an entire video for 30 minutes and then");
-	}
-
-	#[test]
-	fn get_path_from_url() {
-		assert_eq!(
-			get_write_path("https://www.youtube.com?v=gamer").unwrap(),
-			PathBuf::from("./dist/gamer.md")
-		);
 	}
 }
