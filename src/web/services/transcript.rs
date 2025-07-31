@@ -53,8 +53,6 @@ pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 	let join_handle = tokio::spawn(async move {
 		let mut cmd = Command::new(YTDLP);
 		let cmd = cmd.args([
-			"--print",
-			"filename",
 			"--no-simulate",
 			"--write-subs",
 			"--write-auto-subs",
@@ -81,11 +79,8 @@ pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 		cmd.output()
 	});
 
-	let Output {
-		status,
-		stdout,
-		stderr,
-	} = timeout(Duration::from_secs(20), join_handle).await???;
+	// TODO service unavailable code if takes longer than timeout. This will depend based on proxy and server location
+	let Output { status, stderr, .. } = timeout(Duration::from_secs(30), join_handle).await???;
 
 	if !status.success() {
 		return Err(format!(
@@ -98,7 +93,7 @@ pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 		.into());
 	}
 
-	let raw_path = get_artifact_path(&url, RAW_EXT).expect("video id must exist at this point");
+	let raw_path = get_artifact_path(url, RAW_EXT).expect("video id must exist at this point");
 
 	let transcript = fs::read_to_string(&raw_path)
 		.map_err(|e| format!("could not find path {}: {e}", raw_path.display()))?;
