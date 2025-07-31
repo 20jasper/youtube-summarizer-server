@@ -1,6 +1,5 @@
 use crate::config::Config;
 use crate::error::Result;
-use crate::web::routes::transcript;
 use crate::web::services::ai::completions::CompletionClient;
 use crate::web::services::ai::prompt::ARTICLE_TEMPLATE;
 use core::str;
@@ -98,21 +97,17 @@ pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 	let transcript = fs::read_to_string(&raw_path)
 		.map_err(|e| format!("could not find path {}: {e}", raw_path.display()))?;
 
+	let clean = clean_vtt(&transcript);
+	let clean_path = get_artifact_path(url, CLEAN_EXT).expect("video id must exist at this point");
+	// TODO more generic caching facade
+	fs::write(&clean_path, &clean)?;
+
 	println!("got the transcript!");
-	Ok(if raw {
-		transcript
-	} else {
-		clean_vtt(&transcript)
-	})
+	Ok(if raw { transcript } else { clean })
 }
 
 pub async fn summarize_by_url(url: &str) -> Result<String> {
-	get_artifact_dir();
 	let transcript = get_transcript_by_url(url, false).await?;
-
-	let clean = clean_vtt(&transcript);
-	// path.set_extension("clean.en.vtt");
-	// fs::write(&path, &clean).unwrap();
 
 	let Config {
 		api_key,
@@ -122,11 +117,11 @@ pub async fn summarize_by_url(url: &str) -> Result<String> {
 	} = Config::build().unwrap();
 	let client = CompletionClient::build(api_key, &base_url, model)?;
 	let res = client
-		.post(ARTICLE_TEMPLATE, &clean)
+		.post(ARTICLE_TEMPLATE, &transcript)
 		.await?;
 
-	// path.set_extension("summary.md");
-	// fs::write(path, &res).unwrap();
+	let path = get_artifact_path(url, SUMMARY_EXT).expect("video id must be valid at this point");
+	fs::write(path, &res)?;
 
 	Ok(res)
 }
