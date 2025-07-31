@@ -1,104 +1,36 @@
-use crate::config::{self, Config};
 use crate::error::Result;
 use crate::web::services::ai::{completions::CompletionClient, prompt::ARTICLE_TEMPLATE};
+use crate::web::services::youtube::YTClient;
+use crate::web::services::{cache, youtube};
 
 use core::str;
 use core::time::Duration;
 use regex::Regex;
-use reqwest::Url;
 use std::borrow::Cow;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
-use std::process::Command;
-use std::process::Output;
 use tokio::time::timeout;
 
-const YTDLP: &str = "yt-dlp";
-/// <https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#output-template-examples>
-const OUTPUT_TEMPLATE: &str = "%(id)s";
-
-const RAW_EXT: &str = "en.vtt";
 const CLEAN_EXT: &str = "en.clean";
 const SUMMARY_EXT: &str = "md";
-
-fn get_artifact_dir() -> PathBuf {
-	env::var("OUTPUT_PATH")
-		.unwrap_or_else(|_| "./transcripts".to_string())
-		.into()
-}
-
-fn get_artifact_path(url: &str, extension: &str) -> Option<PathBuf> {
-	let mut path = get_artifact_dir().join(get_video_id(url)?);
-	path.set_extension(extension);
-
-	Some(path)
-}
 
 pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 	println!("getting transcript for {url:?}, raw {raw:?}");
 
-	// ytdlp will write to a file in the output dir
-	let output_path = get_artifact_dir();
-
-	// TODO try to read from cache instead
-	// if fs::exists(&output_path)? {
-	// 	return Ok("exists in dir already!".into());
-	// }
-
-	let config::Youtube { retries, proxy } = config::Youtube::from_env()?;
-
 	let owned_url = url.to_owned();
-	let join_handle = tokio::spawn(async move {
-		let mut cmd = Command::new(YTDLP);
-		let cmd = cmd.args([
-			"--no-simulate",
-			"--write-subs",
-			"--write-auto-subs",
-			"--sub-langs",
-			"en*",
-			"--sub-format",
-			"vtt",
-			"--skip-download",
-			"--retries",
-			retries.to_string().as_str(),
-			"--output",
-			OUTPUT_TEMPLATE,
-			"--proxy",
-			&proxy,
-			"--paths",
-			output_path
-				.as_path()
-				.to_str()
-				.expect("path should always be valid utf8"),
-			"-i",
-			&owned_url,
-		]);
-
-		cmd.output()
-	});
-
-	// TODO service unavailable code if takes longer than timeout. This will depend based on proxy and server location
-	let Output { status, stderr, .. } = timeout(Duration::from_secs(30), join_handle).await???;
-
-	if !status.success() {
-		return Err(format!(
-			"get transcript failed with status code {}, {:?}",
-			status
-				.code()
-				.ok_or("could not get status code")?,
-			str::from_utf8(&stderr)
-		)
-		.into());
-	}
-
-	let raw_path = get_artifact_path(url, RAW_EXT).expect("video id must exist at this point");
-
-	let transcript = fs::read_to_string(&raw_path)
-		.map_err(|e| format!("could not find path {}: {e}", raw_path.display()))?;
+	let transcript = timeout(
+		Duration::from_secs(30),
+		tokio::spawn(async move {
+			let client = YTClient::from_env()?;
+			client.fetch_captions(&owned_url)
+		}),
+	)
+	.await???;
 
 	let clean = clean_vtt(&transcript);
-	let clean_path = get_artifact_path(url, CLEAN_EXT).expect("video id must exist at this point");
+	let clean_path =
+		cache::get_artifact_path(url, CLEAN_EXT).expect("video id must exist at this point");
 	// TODO more generic caching facade
 	fs::write(&clean_path, &clean)?;
 
@@ -113,7 +45,8 @@ pub async fn summarize_by_url(url: &str) -> Result<String> {
 		.post(ARTICLE_TEMPLATE, &get_transcript_by_url(url, false).await?)
 		.await?;
 
-	let path = get_artifact_path(url, SUMMARY_EXT).expect("video id must be valid at this point");
+	let path =
+		cache::get_artifact_path(url, SUMMARY_EXT).expect("video id must be valid at this point");
 	fs::write(path, &summary)?;
 
 	println!("done summarizing {url:?}");
@@ -146,19 +79,11 @@ pub fn clean_vtt(transcript: &str) -> String {
 		.join(" ")
 }
 
-fn get_video_id(url: &str) -> Option<String> {
-	url.parse::<Url>()
-		.ok()?
-		.query_pairs()
-		.find(|(key, _)| key == "v")
-		.map(|(_, id)| id.into_owned())
-}
-
 pub fn get_write_path(url: &str) -> Option<PathBuf> {
 	let write_dir: PathBuf = env::var("WRITE_DIR")
 		.unwrap_or_else(|_| "./dist".to_string())
 		.into();
-	let mut write_path = write_dir.join(get_video_id(url)?);
+	let mut write_path = write_dir.join(youtube::get_video_id(url)?);
 	write_path.set_extension("md");
 
 	Some(write_path)

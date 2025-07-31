@@ -65,14 +65,6 @@ pub struct CompletionClient {
 }
 
 impl CompletionClient {
-	pub fn new(api_key: impl Into<String>, url: Url, model: impl Into<String>) -> Self {
-		Self {
-			model: model.into(),
-			url,
-			api_key: api_key.into(),
-		}
-	}
-
 	pub fn from_env() -> Result<Self> {
 		const OPEN_AI_API_KEY: &str = "OPEN_AI_API_KEY";
 		const OPEN_AI_MODEL: &str = "OPEN_AI_MODEL";
