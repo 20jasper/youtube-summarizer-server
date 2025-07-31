@@ -3,14 +3,20 @@ use crate::error::Result;
 use dotenvy::dotenv;
 use std::env;
 
+pub trait Config {
+	fn from_env() -> Result<Self>
+	where
+		Self: Sized;
+}
+
 pub struct Completion {
 	pub api_key: String,
 	pub model: String,
 	pub base_url: String,
 }
 
-impl Completion {
-	pub fn build() -> Result<Self> {
+impl Config for Completion {
+	fn from_env() -> Result<Self> {
 		dotenv()?;
 
 		const OPEN_AI_API_KEY: &str = "OPEN_AI_API_KEY";
@@ -37,8 +43,8 @@ pub struct Youtube {
 	pub proxy: String,
 }
 
-impl Youtube {
-	pub fn build() -> Result<Self> {
+impl Config for Youtube {
+	fn from_env() -> Result<Self> {
 		dotenv()?;
 
 		let retries = env::var(YOUTUBE_RETRIES)

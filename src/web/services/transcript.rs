@@ -1,4 +1,4 @@
-use crate::config;
+use crate::config::{self, Config};
 use crate::error::Result;
 use crate::web::services::ai::{completions::CompletionClient, prompt::ARTICLE_TEMPLATE};
 
@@ -46,7 +46,7 @@ pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 	// 	return Ok("exists in dir already!".into());
 	// }
 
-	let config::Youtube { retries, proxy } = config::Youtube::build().unwrap();
+	let config::Youtube { retries, proxy } = config::Youtube::from_env()?;
 
 	let owned_url = url.to_owned();
 	let join_handle = tokio::spawn(async move {
@@ -116,7 +116,7 @@ pub async fn summarize_by_url(url: &str) -> Result<String> {
 		model,
 		base_url,
 		..
-	} = config::Completion::build().unwrap();
+	} = config::Completion::from_env()?;
 	let client = CompletionClient::build(api_key, &base_url, model)?;
 	let res = client
 		.post(ARTICLE_TEMPLATE, &transcript)
