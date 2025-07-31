@@ -11,13 +11,41 @@ struct TranscriptParams {
 	raw: bool,
 }
 
+async fn transcript(
+	Json(TranscriptParams { url, raw }): Json<TranscriptParams>,
+) -> (StatusCode, Json<Value>) {
+	println!("GET transcript {url:?}, raw {raw:?}");
+
+	match transcript::get_transcript_by_url(&url, raw).await {
+		Ok(transcript) => {
+			println!("got transcript");
+			(
+				StatusCode::OK,
+				Json(json!(
+						{
+							"url": url,
+							"transcript": transcript
+						}
+				)),
+			)
+		}
+		Err(e) => {
+			println!("failed to get transcript {e:?}");
+			(
+				StatusCode::INTERNAL_SERVER_ERROR,
+				Json(json!({"message": "internal server error"})),
+			)
+		}
+	}
+}
+
 #[debug_handler]
 async fn summarize(
 	Json(TranscriptParams { url, raw }): Json<TranscriptParams>,
 ) -> (StatusCode, Json<Value>) {
 	println!("post transcript: {url:?}, raw {raw:?}");
 
-	match transcript::get_by_url(&url).await {
+	match transcript::summarize_by_url(&url).await {
 		Ok(transcript) => {
 			println!("got transcript");
 			(
@@ -41,5 +69,8 @@ async fn summarize(
 }
 
 pub fn routes() -> Router {
-	Router::new().route("/summary", post(summarize))
+	// todo make these get requests
+	Router::new()
+		.route("/summary", post(summarize))
+		.route("/transcript", post(transcript))
 }
