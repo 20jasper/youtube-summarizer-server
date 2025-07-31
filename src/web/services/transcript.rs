@@ -6,20 +6,18 @@ use crate::web::services::{cache, youtube};
 use core::str;
 use core::time::Duration;
 use regex::Regex;
+use reqwest::Url;
 use std::borrow::Cow;
 use std::env;
-use std::fs;
 use std::path::PathBuf;
 use tokio::time::timeout;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TranscriptState {
 	Raw,
 	Clean,
 	Summarized,
 }
-
-const CLEAN_EXT: &str = "en.clean";
-const SUMMARY_EXT: &str = "md";
 
 pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 	println!("getting transcript for {url:?}, raw {raw:?}");
@@ -35,10 +33,13 @@ pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 	.await???;
 
 	let clean = clean_vtt(&transcript);
-	let clean_path =
-		cache::get_artifact_path(url, CLEAN_EXT).expect("video id must exist at this point");
-	// TODO more generic caching facade
-	fs::write(&clean_path, &clean)?;
+	cache::put(
+		&cache::Key {
+			url: Url::parse(url)?,
+			state: TranscriptState::Clean,
+		},
+		&clean,
+	)?;
 
 	println!("got the transcript!");
 	Ok(if raw { transcript } else { clean })
@@ -51,9 +52,13 @@ pub async fn summarize_by_url(url: &str) -> Result<String> {
 		.post(ARTICLE_TEMPLATE, &get_transcript_by_url(url, false).await?)
 		.await?;
 
-	let path =
-		cache::get_artifact_path(url, SUMMARY_EXT).expect("video id must be valid at this point");
-	fs::write(path, &summary)?;
+	cache::put(
+		&cache::Key {
+			url: Url::parse(url)?,
+			state: TranscriptState::Summarized,
+		},
+		&summary,
+	)?;
 
 	println!("done summarizing {url:?}");
 

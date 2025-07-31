@@ -34,7 +34,7 @@ impl YTClient {
 			.and_then(|s| s.parse::<u8>().ok())
 			.unwrap_or(3);
 		let proxy = env::var(YOUTUBE_PROXY).map_err(|_| Error::EnvMissing(YOUTUBE_PROXY))?;
-		let proxy = Url::parse(&proxy).map_err(|_| "Invalid YouTube proxy URL")?;
+		let proxy = Url::parse(&proxy)?;
 
 		Ok(Self { retries, proxy })
 	}
