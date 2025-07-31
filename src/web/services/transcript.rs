@@ -26,7 +26,7 @@ pub async fn get_by_url(url: &str) -> Result<String> {
 	// 	return Ok("exists in dir already!".into());
 	// }
 
-	let proxy = env::var(PROXY)?;
+	let proxy = env::var(PROXY).map_err(|_| "proxy is not set")?;
 
 	let url = url.to_owned();
 	let join_handle = tokio::spawn(async move {
