@@ -1,3 +1,7 @@
+use crate::config::Config;
+use crate::error::Result;
+use crate::web::services::ai::completions::CompletionClient;
+use crate::web::services::ai::prompt::ARTICLE_TEMPLATE;
 use core::str;
 use core::time::Duration;
 use regex::Regex;
@@ -9,9 +13,6 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::process::Output;
 use tokio::time::timeout;
-
-use std::error::Error;
-pub type Result<T> = core::result::Result<T, Box<dyn Error>>;
 
 const YTDLP: &str = "yt-dlp";
 const RETRIES: &str = "10";
@@ -28,7 +29,7 @@ pub async fn get_by_url(url: &str) -> Result<String> {
 	// 	return Ok("exists in dir already!".into());
 	// }
 
-	let proxy = env::var(PROXY)?;
+	let proxy = env::var(PROXY).map_err(|_| "proxy is not set")?;
 
 	let url = url.to_owned();
 	let join_handle = tokio::spawn(async move {
@@ -82,7 +83,26 @@ pub async fn get_by_url(url: &str) -> Result<String> {
 
 	let transcript = fs::read_to_string(&path)
 		.map_err(|e| format!("could not find path {}: {e}", path.display()))?;
-	Ok(transcript)
+
+	let clean = clean_vtt(&transcript);
+	path.set_extension("clean.en.vtt");
+	fs::write(&path, &clean).unwrap();
+
+	let Config {
+		api_key,
+		model,
+		base_url,
+		..
+	} = Config::build().unwrap();
+	let client = CompletionClient::build(api_key, &base_url, model)?;
+	let res = client
+		.post(ARTICLE_TEMPLATE, &clean)
+		.await?;
+
+	path.set_extension("summary.md");
+	fs::write(path, &res).unwrap();
+
+	Ok(res)
 }
 
 /// remove timestamps and duplicate lines

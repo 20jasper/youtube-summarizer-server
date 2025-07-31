@@ -4,10 +4,10 @@ use axum::{middleware, response::Response, routing::get, serve, Router};
 use tokio::net::TcpListener;
 use tower_http::services::ServeDir;
 
+pub mod config;
 pub mod error;
 pub mod web;
 
-pub use self::error::{Error, Result};
 use web::routes::transcript;
 
 async fn response_mapper(res: Response) -> Response {
