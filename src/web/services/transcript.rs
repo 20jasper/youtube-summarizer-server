@@ -12,6 +12,12 @@ use std::fs;
 use std::path::PathBuf;
 use tokio::time::timeout;
 
+pub enum TranscriptState {
+	Raw,
+	Clean,
+	Summarized,
+}
+
 const CLEAN_EXT: &str = "en.clean";
 const SUMMARY_EXT: &str = "md";
 
