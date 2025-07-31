@@ -87,7 +87,7 @@ pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 			status
 				.code()
 				.ok_or("could not get status code")?,
-			str::from_utf8(&stderr)?
+			str::from_utf8(&stderr)
 		)
 		.into());
 	}
@@ -114,10 +114,10 @@ pub async fn summarize_by_url(url: &str) -> Result<String> {
 	let config::Completion {
 		api_key,
 		model,
-		base_url,
+		url: client_url,
 		..
 	} = config::Completion::from_env()?;
-	let client = CompletionClient::build(api_key, &base_url, model)?;
+	let client = CompletionClient::new(api_key, client_url, model);
 	let res = client
 		.post(ARTICLE_TEMPLATE, &transcript)
 		.await?;

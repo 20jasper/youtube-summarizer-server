@@ -1,6 +1,7 @@
 use crate::error::Error;
 use crate::error::Result;
 use dotenvy::dotenv;
+use reqwest::Url;
 use std::env;
 
 pub trait Config {
@@ -9,29 +10,35 @@ pub trait Config {
 		Self: Sized;
 }
 
+const OPEN_AI_API_KEY: &str = "OPEN_AI_API_KEY";
+const OPEN_AI_MODEL: &str = "OPEN_AI_MODEL";
+const OPEN_AI_BASE_URL: &str = "OPEN_AI_BASE_URL";
+
+const COMPLETIONS_PATH: &str = "chat/completions";
 pub struct Completion {
 	pub api_key: String,
 	pub model: String,
-	pub base_url: String,
+	pub url: Url,
 }
 
 impl Config for Completion {
 	fn from_env() -> Result<Self> {
 		dotenv()?;
 
-		const OPEN_AI_API_KEY: &str = "OPEN_AI_API_KEY";
-		const OPEN_AI_MODEL: &str = "OPEN_AI_MODEL";
-		const OPEN_AI_BASE_URL: &str = "OPEN_AI_BASE_URL";
-
 		let api_key = env::var(OPEN_AI_API_KEY).map_err(|_| Error::EnvMissing(OPEN_AI_API_KEY))?;
 		let model = env::var(OPEN_AI_MODEL).map_err(|_| Error::EnvMissing(OPEN_AI_MODEL))?;
 		let base_url =
 			env::var(OPEN_AI_BASE_URL).map_err(|_| Error::EnvMissing(OPEN_AI_BASE_URL))?;
 
+		let url = base_url
+			.parse::<Url>()
+			.and_then(|x| x.join(COMPLETIONS_PATH))
+			.map_err(|_| "couldn't parse base uri")?;
+
 		Ok(Self {
 			api_key,
 			model,
-			base_url,
+			url,
 		})
 	}
 }

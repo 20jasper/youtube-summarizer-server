@@ -54,8 +54,6 @@ impl CompletionRequestBuilder {
 	}
 }
 
-pub const COMPLETIONS_PATH: &str = "chat/completions";
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CompletionClient {
 	model: String,
@@ -64,18 +62,12 @@ pub struct CompletionClient {
 }
 
 impl CompletionClient {
-	pub fn build(
-		token: impl Into<String>,
-		base_url: &str,
-		model: impl Into<String>,
-	) -> Result<Self> {
-		Ok(Self {
+	pub fn new(token: impl Into<String>, url: Url, model: impl Into<String>) -> Self {
+		Self {
 			model: model.into(),
-			url: base_url
-				.parse::<Url>()?
-				.join(COMPLETIONS_PATH)?,
+			url,
 			token: token.into(),
-		})
+		}
 	}
 
 	pub async fn post(&self, prompt: &str, text: &str) -> Result<String> {
@@ -92,7 +84,8 @@ impl CompletionClient {
 					content: text.into(),
 				},
 			])
-			.build()?;
+			.build()
+			.map_err(|e| format!("couldn't build completion request: {e:?}"))?;
 
 		let response = Client::new()
 			.post(self.url.as_ref())

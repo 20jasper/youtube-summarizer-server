@@ -1,17 +1,52 @@
+use axum::response::IntoResponse;
 use derive_more::From;
-use displaydoc::Display;
-use thiserror::Error;
-
-#[derive(Display, Debug, Error, From)]
-pub enum Error {
-	/// Environment variable `{0}` is not set
-	EnvMissing(String),
-	/// Error parsing environment variables: {0}
-	EnvParse(#[from] dotenvy::Error),
-
-	/// Error: {0:?}
-	#[error(transparent)]
-	Other(#[from] Box<dyn std::error::Error>),
-}
+use reqwest::StatusCode;
+use tokio::{task::JoinError, time::error::Elapsed};
 
 pub type Result<T> = core::result::Result<T, Error>;
+
+#[derive(Debug, From)]
+pub enum Error {
+	EnvMissing(&'static str),
+	#[from]
+	EnvParse(dotenvy::Error),
+
+	#[from]
+	Reqwest(reqwest::Error),
+	#[from]
+	Timeout(Elapsed),
+	#[from]
+	Join(JoinError),
+	#[from]
+	Io(std::io::Error),
+
+	#[from]
+	Custom(String),
+}
+
+impl Error {
+	pub fn custom(val: impl std::fmt::Display) -> Self {
+		Self::Custom(val.to_string())
+	}
+}
+
+impl From<&str> for Error {
+	fn from(value: &str) -> Self {
+		Self::Custom(value.to_string())
+	}
+}
+
+impl IntoResponse for Error {
+	fn into_response(self) -> axum::response::Response {
+		use Error as E;
+		match self {
+			E::EnvMissing(_) | E::EnvParse(_) => {
+				(StatusCode::SERVICE_UNAVAILABLE, "Service Unavailable").into_response()
+			}
+			E::Timeout(_) => (StatusCode::GATEWAY_TIMEOUT, "Gateway Timeout").into_response(),
+			E::Reqwest(_) | E::Join(_) | E::Io(_) | E::Custom(_) => {
+				(StatusCode::INTERNAL_SERVER_ERROR, "Unhandled Server Error").into_response()
+			}
+		}
+	}
+}
