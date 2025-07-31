@@ -3,6 +3,7 @@ use axum::{extract::Query, http::StatusCode, routing::get, Json, Router};
 use axum_macros::debug_handler;
 use serde::Deserialize;
 use serde_json::{json, Value};
+use url::Url;
 
 use crate::error::Result;
 
@@ -23,7 +24,7 @@ async fn transcript(
 		Json(json!(
 				{
 					"url": url,
-					"transcript":transcript::get_transcript_by_url(&url, raw).await?
+					"transcript":transcript::get_transcript_by_url(&Url::parse(&url)?, raw).await?
 				}
 		)),
 	))
@@ -43,8 +44,7 @@ async fn summarize(
 		StatusCode::OK,
 		Json(json!(
 				{
-					"url": url,
-					"summary":transcript::summarize_by_url(&url).await?
+					"summary":transcript::summarize_by_url(&Url::parse(&url)?).await?,
 				}
 		)),
 	))

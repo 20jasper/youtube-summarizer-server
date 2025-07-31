@@ -39,12 +39,10 @@ impl YTClient {
 		Ok(Self { retries, proxy })
 	}
 
-	pub fn fetch_captions(&self, url: &str) -> Result<String> {
+	pub fn fetch_captions(&self, url: &Url) -> Result<String> {
 		const YTDLP: &str = "yt-dlp";
 		/// <https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#output-template-examples>
 		const OUTPUT_TEMPLATE: &str = "%(id)s";
-
-		let url = Url::parse(url).map_err(|_| "Invalid URL")?;
 
 		let read_cache = || {
 			cache::get(&Key {

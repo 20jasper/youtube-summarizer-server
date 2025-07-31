@@ -17,7 +17,7 @@ pub enum TranscriptState {
 	Summarized,
 }
 
-pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
+pub async fn get_transcript_by_url(url: &Url, raw: bool) -> Result<String> {
 	println!("getting transcript for {url:?}, raw {raw:?}");
 
 	let owned_url = url.to_owned();
@@ -33,7 +33,7 @@ pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 	let clean = clean_vtt(&transcript);
 	cache::put(
 		&cache::Key {
-			url: Url::parse(url)?,
+			url: url.clone(),
 			state: TranscriptState::Clean,
 		},
 		&clean,
@@ -43,11 +43,11 @@ pub async fn get_transcript_by_url(url: &str, raw: bool) -> Result<String> {
 	Ok(if raw { transcript } else { clean })
 }
 
-pub async fn summarize_by_url(url: &str) -> Result<String> {
+pub async fn summarize_by_url(url: &Url) -> Result<String> {
 	println!("summarizing {url:?}");
 
 	if let Some(summary) = cache::get(&cache::Key {
-		url: Url::parse(url)?,
+		url: url.clone(),
 		state: TranscriptState::Summarized,
 	}) {
 		return Ok(summary);
@@ -59,7 +59,7 @@ pub async fn summarize_by_url(url: &str) -> Result<String> {
 
 	cache::put(
 		&cache::Key {
-			url: Url::parse(url)?,
+			url: url.clone(),
 			state: TranscriptState::Summarized,
 		},
 		&summary,
