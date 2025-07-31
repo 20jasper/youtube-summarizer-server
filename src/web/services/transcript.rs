@@ -80,6 +80,10 @@ pub async fn get_by_url(url: &str) -> Result<String> {
 
 	let transcript = fs::read_to_string(&path)
 		.map_err(|e| format!("could not find path {}: {e}", path.display()))?;
+
+	path.set_extension("clean.en.vtt");
+	fs::write(path, clean_vtt(&transcript)).unwrap();
+
 	Ok(transcript)
 }
 
