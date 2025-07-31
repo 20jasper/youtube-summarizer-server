@@ -1,5 +1,4 @@
 use crate::web::services::transcript;
-use crate::web::services::transcript::clean_vtt;
 use axum::{http::StatusCode, routing::post, Json, Router};
 use axum_macros::debug_handler;
 use serde::Deserialize;
@@ -26,7 +25,7 @@ async fn transcript(
 				Json(json!(
 						{
 							"url": url,
-							"transcript": if raw {transcript} else {clean_vtt(&transcript)}
+							"transcript": transcript
 						}
 				)),
 			)

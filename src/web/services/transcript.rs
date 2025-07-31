@@ -1,4 +1,7 @@
+use crate::config::Config;
 use crate::error::Result;
+use crate::web::services::ai::completions::CompletionClient;
+use crate::web::services::ai::prompt::ARTICLE_TEMPLATE;
 use core::str;
 use core::time::Duration;
 use regex::Regex;
@@ -81,10 +84,25 @@ pub async fn get_by_url(url: &str) -> Result<String> {
 	let transcript = fs::read_to_string(&path)
 		.map_err(|e| format!("could not find path {}: {e}", path.display()))?;
 
+	let clean = clean_vtt(&transcript);
 	path.set_extension("clean.en.vtt");
-	fs::write(path, clean_vtt(&transcript)).unwrap();
+	fs::write(&path, &clean).unwrap();
 
-	Ok(transcript)
+	let Config {
+		api_key,
+		model,
+		base_url,
+		..
+	} = Config::build().unwrap();
+	let client = CompletionClient::build(api_key, &base_url, model)?;
+	let res = client
+		.post(ARTICLE_TEMPLATE, &clean)
+		.await?;
+
+	path.set_extension("summary.md");
+	fs::write(path, &res).unwrap();
+
+	Ok(res)
 }
 
 /// remove timestamps and duplicate lines
