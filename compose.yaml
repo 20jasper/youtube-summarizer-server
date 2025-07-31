@@ -19,8 +19,13 @@ services:
     ports:
       - 6981:8080
     environment:
-      - WRITE_DIR=/var/transcripts
-      - OUTPUT_PATH=/var/dist
+      - WRITE_DIR=${WRITE_DIR:-/var/transcripts}
+      - OUTPUT_PATH=${OUTPUT_PATH:-/var/dist}
+      - YOUTUBE_RETRIES=${YOUTUBE_RETRIES}
+      - YOUTUBE_PROXY=${YOUTUBE_PROXY:?must include proxy}
+      - OPEN_AI_API_KEY=${OPEN_AI_API_KEY:?must include OpenAI API key}
+      - OPEN_AI_BASE_URL=${OPEN_AI_BASE_URL:? must include OpenAI base URL}
+      - OPEN_AI_MODEL=${OPEN_AI_MODEL:? must include OpenAI model}
 # The commented out section below is an example of how to define a PostgreSQL
 # database that your application can use. `depends_on` tells Docker Compose to
 # start the database before your application. The `db-data` volume persists the
