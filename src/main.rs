@@ -1,17 +1,18 @@
 use axum::{routing::get, serve, Router};
 use core::net::SocketAddr;
+use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 use tokio::net::TcpListener;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use tracing::{event, Level};
 use tracing_subscriber::EnvFilter;
 use web::routes::transcript;
+use youtube_summarizer_server::web::services::env::load_env;
 
 pub mod error;
 pub mod prompts;
 pub mod web;
 
-#[tokio::main]
-async fn main() {
+fn init_tracing() {
 	tracing_subscriber::fmt()
 		.with_env_filter(
 			EnvFilter::try_from_default_env()
@@ -23,13 +24,44 @@ async fn main() {
 				.unwrap(),
 		)
 		.init();
+}
+
+async fn init_db() -> Result<Pool<Postgres>, sqlx::Error> {
+	tracing::info!("Connecting to the database...");
+	let db = PgPoolOptions::new()
+		.max_connections(5)
+		.connect(&std::env::var("DATABASE_URL").expect("DATABASE_URL must be set"))
+		.await;
+	tracing::info!("Connected to the database");
+	db
+}
+
+#[tokio::main]
+async fn main() {
+	load_env().unwrap();
+	init_tracing();
+
+	let pool = init_db().await.unwrap();
+	sqlx::migrate!()
+		.run(&pool)
+		.await
+		.unwrap();
+
+	let row: (i64,) = sqlx::query_as("SELECT $1")
+		.bind(150_i64)
+		.fetch_one(&pool)
+		.await
+		.unwrap();
+
+	assert_eq!(row.0, 150);
 
 	let routes = Router::new()
 		.route("/", get(|| async { "hello world" }))
 		.merge(transcript::routes())
 		// layers run from bottom to top
 		.fallback_service(ServeDir::new("public/"))
-		.layer(TraceLayer::new_for_http());
+		.layer(TraceLayer::new_for_http())
+		.with_state(pool);
 
 	let address = SocketAddr::from(([0, 0, 0, 0], 8080));
 	let listener = TcpListener::bind(address)
