@@ -3,41 +3,31 @@
 ARG RUST_VERSION=1.88.0
 ARG APP_NAME=youtube-summarizer-server
 
-FROM rust:${RUST_VERSION} AS build
-ARG APP_NAME
+FROM lukemathwalker/cargo-chef:latest-rust-${RUST_VERSION} AS chef
+
+ARG APP_NAME=youtube-summarizer-server
+
 WORKDIR /app
 
-# Build the application.
-# Leverage a cache mount to /usr/local/cargo/registry/
-# for downloaded dependencies, a cache mount to /usr/local/cargo/git/db
-# for git repository dependencies, and a cache mount to /app/target/ for
-# compiled dependencies which will speed up subsequent builds.
-# Leverage a bind mount to the src directory to avoid having to copy the
-# source code into the container. Once built, copy the executable to an
-# output directory before the cache mounted /app/target is unmounted.
-ARG CARGO_CACHE=/usr/local/cargo/registry/
-ARG CARGO_REGISTRY=/usr/local/cargo/registry/
-ARG GIT_CACHE=/usr/local/cargo/git/db
-ARG TARGET_CACHE=/app/target/
-ARG RAILWAY_SERVICE_ID=976b491c-79c5-4fa4-8f64-323a71a4cee6
-COPY src src
-COPY Cargo.toml Cargo.toml
-COPY Cargo.Lock Cargo.Lock
-RUN \
-    # railway doesn't like bind mounts :(
-    # --mount=type=bind,source=src,target=src \
-    # --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
-    # --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
-    --mount=type=cache,id=s/${RAILWAY_SERVICE_ID}-${TARGET_CACHE},target=${TARGET_CACHE} \
-    --mount=type=cache,id=s/${RAILWAY_SERVICE_ID}-${GIT_CACHE},target=${GIT_CACHE} \
-    --mount=type=cache,id=s/${RAILWAY_SERVICE_ID}-${CARGO_REGISTRY},target=${CARGO_REGISTRY} \
-    cargo build --locked --release && \
-    cp ./target/release/$APP_NAME /bin/server
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef AS builder 
+COPY --from=planner /app/recipe.json recipe.json
+
+RUN cargo chef cook --release --recipe-path recipe.json
+
+COPY . .
+RUN cargo build --release --bin ${APP_NAME}
 
 
 FROM python:3.13-slim-bookworm AS final
 
-COPY --from=build /bin/server /bin/
+WORKDIR /app
+
+ARG APP_NAME=youtube-summarizer-server
+COPY --from=builder /app/target/release/${APP_NAME} /usr/local/bin
 
 RUN pip install "yt-dlp[default,curl-cffi]" && \
     pip install requests
@@ -62,4 +52,4 @@ USER appuser
 
 EXPOSE 8080
 
-CMD ["/bin/server"]
+ENTRYPOINT ["/usr/local/bin/youtube-summarizer-server"]
