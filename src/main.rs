@@ -2,6 +2,7 @@ use axum::{routing::get, serve, Router};
 use core::net::SocketAddr;
 use tokio::net::TcpListener;
 use tower_http::{services::ServeDir, trace::TraceLayer};
+use tracing::{event, Level};
 use tracing_subscriber::EnvFilter;
 use web::routes::transcript;
 
@@ -13,7 +14,7 @@ async fn main() {
 	tracing_subscriber::fmt()
 		.with_env_filter(
 			EnvFilter::try_from_default_env()
-				.or_else(|_| EnvFilter::try_new("youtube_summarizer_server=debug,tower_http=debug"))
+				.or_else(|_| EnvFilter::try_new("youtube_summarizer_server=trace,tower_http=debug"))
 				.unwrap(),
 		)
 		.init();
@@ -29,7 +30,7 @@ async fn main() {
 	let listener = TcpListener::bind(address)
 		.await
 		.unwrap();
-	println!("Listening on http://{address}");
+	event!(Level::INFO, "Listening on http://{address}");
 
 	serve(listener, routes.into_make_service())
 		.await
