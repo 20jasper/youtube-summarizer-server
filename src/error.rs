@@ -41,6 +41,7 @@ impl From<&str> for Error {
 impl IntoResponse for Error {
 	fn into_response(self) -> axum::response::Response {
 		use Error as E;
+		println!("Error: {self:?}");
 		match self {
 			E::EnvMissing(_) | E::EnvParse(_) => {
 				(StatusCode::SERVICE_UNAVAILABLE, "Service Unavailable").into_response()

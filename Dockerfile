@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-ARG RUST_VERSION=1.80.1
+ARG RUST_VERSION=1.88.0
 ARG APP_NAME=youtube-summarizer-server
 
 FROM rust:${RUST_VERSION} AS build
@@ -16,6 +16,7 @@ WORKDIR /app
 # source code into the container. Once built, copy the executable to an
 # output directory before the cache mounted /app/target is unmounted.
 ARG CARGO_CACHE=/usr/local/cargo/registry/
+ARG CARGO_REGISTRY=/usr/local/cargo/registry/
 ARG GIT_CACHE=/usr/local/cargo/git/db
 ARG TARGET_CACHE=/app/target/
 RUN --mount=type=bind,source=src,target=src \
@@ -28,7 +29,7 @@ RUN --mount=type=bind,source=src,target=src \
     cp ./target/release/$APP_NAME /bin/server
 
 
-FROM python:3.12.5-slim-bookworm AS final
+FROM python:3.13-slim-bookworm AS final
 
 COPY --from=build /bin/server /bin/
 
@@ -50,14 +51,6 @@ RUN adduser \
     chown -R appuser: /var/transcripts/ && \
     mkdir -p /var/dist/ && \
     chown -R appuser: /var/dist/
-
-ARG YOUTUBE_USERNAME
-ARG YOUTUBE_PASSWORD
-RUN test -n "$YOUTUBE_PASSWORD" || (echo "YOUTUBE_PASSWORD not set" && false) && \
-    test -n "$YOUTUBE_USERNAME" || (echo "YOUTUBE_USERNAME not set" && false) && \
-    touch /var/.netrc && \
-    echo 'machine youtube login ${YOUTUBE_USERNAME} password ${YOUTUBE_PASSWORD}' >> /var/.netrc && \
-    chmod 666 /var/.netrc
 
 USER appuser
 

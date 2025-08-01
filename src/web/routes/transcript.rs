@@ -51,7 +51,6 @@ async fn summarize(
 }
 
 pub fn routes() -> Router {
-	// todo make these get requests
 	Router::new()
 		.route("/summary", get(summarize))
 		.route("/transcript", get(transcript))
