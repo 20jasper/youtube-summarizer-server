@@ -27,6 +27,8 @@ pub enum Error {
 	Join(JoinError),
 	#[from]
 	Io(std::io::Error),
+	#[from]
+	Sqlx(sqlx::Error),
 
 	#[from]
 	Custom(String),
@@ -62,7 +64,7 @@ impl IntoResponse for Error {
 				format!("Captions not available for URL: {}", url.as_str()),
 			)
 				.into_response(),
-			E::Reqwest(_) | E::Join(_) | E::Io(_) | E::Custom(_) => {
+			E::Sqlx(_) | E::Reqwest(_) | E::Join(_) | E::Io(_) | E::Custom(_) => {
 				(StatusCode::INTERNAL_SERVER_ERROR, "Unhandled Server Error").into_response()
 			}
 		}

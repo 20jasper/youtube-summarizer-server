@@ -40,6 +40,11 @@ impl YTUrl {
 			.find(|(key, _)| key == "v")
 			.map(|(_, id)| id)
 	}
+
+	pub fn id_string(&self) -> Option<String> {
+		self.id()
+			.map(std::borrow::Cow::into_owned)
+	}
 }
 
 #[cfg(test)]

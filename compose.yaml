@@ -24,6 +24,7 @@ services:
       - OPEN_AI_API_KEY=${OPEN_AI_API_KEY:?must include OpenAI API key}
       - OPEN_AI_BASE_URL=${OPEN_AI_BASE_URL:? must include OpenAI base URL}
       - OPEN_AI_MODEL=${OPEN_AI_MODEL:? must include OpenAI model}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://localhost:5432/example?user=postgres&password=password}
     depends_on:
       db:
         condition: service_healthy
