@@ -84,7 +84,7 @@ impl YTClient {
 			.into());
 		}
 
-		read_cache().ok_or("Transcript not found in cache".into())
+		read_cache().ok_or(Error::CaptionsUnavailable(url.clone()))
 	}
 }
 
