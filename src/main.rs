@@ -1,29 +1,29 @@
+use axum::{routing::get, serve, Router};
 use core::net::SocketAddr;
-
-use axum::{middleware, response::Response, routing::get, serve, Router};
 use tokio::net::TcpListener;
-use tower_http::services::ServeDir;
+use tower_http::{services::ServeDir, trace::TraceLayer};
+use tracing_subscriber::EnvFilter;
+use web::routes::transcript;
 
 pub mod error;
 pub mod web;
 
-use web::routes::transcript;
-
-async fn response_mapper(res: Response) -> Response {
-	println!("Hello from the Response Mapper");
-	println!();
-
-	res
-}
-
 #[tokio::main]
 async fn main() {
+	tracing_subscriber::fmt()
+		.with_env_filter(
+			EnvFilter::try_from_default_env()
+				.or_else(|_| EnvFilter::try_new("youtube_summarizer_server=debug,tower_http=debug"))
+				.unwrap(),
+		)
+		.init();
+
 	let routes = Router::new()
 		.route("/", get(|| async { "hello world" }))
 		.merge(transcript::routes())
 		// layers run from bottom to top
-		.layer(middleware::map_response(response_mapper))
-		.fallback_service(ServeDir::new("public/"));
+		.fallback_service(ServeDir::new("public/"))
+		.layer(TraceLayer::new_for_http());
 
 	let address = SocketAddr::from(([0, 0, 0, 0], 8080));
 	let listener = TcpListener::bind(address)

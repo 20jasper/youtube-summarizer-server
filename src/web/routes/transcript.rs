@@ -15,8 +15,6 @@ struct TranscriptParams {
 async fn transcript(
 	Query(TranscriptParams { url, raw }): Query<TranscriptParams>,
 ) -> Result<(StatusCode, Json<Value>)> {
-	println!("GET transcript {url:?}, raw {raw:?}");
-
 	Ok((
 		StatusCode::OK,
 		Json(json!(
@@ -36,8 +34,6 @@ struct SummaryParams {
 async fn summarize(
 	Query(SummaryParams { url }): Query<SummaryParams>,
 ) -> Result<(StatusCode, Json<Value>)> {
-	println!("GET summary {url:?}");
-
 	Ok((
 		StatusCode::OK,
 		Json(json!(
