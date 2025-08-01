@@ -16,8 +16,6 @@ pub enum TranscriptState {
 }
 
 pub async fn get_transcript_by_url(url: &YTUrl, raw: bool) -> Result<String> {
-	println!("getting transcript for {url:?}, raw {raw:?}");
-
 	let owned_url = url.to_owned();
 	let transcript = timeout(
 		Duration::from_secs(30),
@@ -28,6 +26,8 @@ pub async fn get_transcript_by_url(url: &YTUrl, raw: bool) -> Result<String> {
 	)
 	.await???;
 
+	tracing::debug!("fetched transcript");
+
 	let clean = clean_vtt(&transcript);
 	cache::put(
 		&cache::Key {
@@ -37,13 +37,10 @@ pub async fn get_transcript_by_url(url: &YTUrl, raw: bool) -> Result<String> {
 		&clean,
 	)?;
 
-	println!("got the transcript!");
 	Ok(if raw { transcript } else { clean })
 }
 
 pub async fn summarize_by_url(url: &YTUrl) -> Result<String> {
-	println!("summarizing {url:?}");
-
 	if let Some(summary) = cache::get(&cache::Key {
 		url: url.clone(),
 		state: TranscriptState::Summarized,
@@ -55,6 +52,8 @@ pub async fn summarize_by_url(url: &YTUrl) -> Result<String> {
 		.post(ARTICLE_TEMPLATE, &get_transcript_by_url(url, false).await?)
 		.await?;
 
+	tracing::debug!("summarized transcript");
+
 	cache::put(
 		&cache::Key {
 			url: url.clone(),
@@ -62,8 +61,6 @@ pub async fn summarize_by_url(url: &YTUrl) -> Result<String> {
 		},
 		&summary,
 	)?;
-
-	println!("done summarizing {url:?}");
 
 	Ok(summary)
 }
