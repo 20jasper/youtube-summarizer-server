@@ -7,6 +7,7 @@ use tracing_subscriber::EnvFilter;
 use web::routes::transcript;
 
 pub mod error;
+pub mod prompts;
 pub mod web;
 
 #[tokio::main]

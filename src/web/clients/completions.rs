@@ -1,12 +1,23 @@
-use std::env;
-
+use crate::error::{Error, Result};
+use crate::web::services::env::load_env;
 use derive_builder::Builder;
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
+use std::env;
 
-use crate::error::{Error, Result};
-use crate::web::services::ai::deepinfra::{Message, Response};
-use crate::web::services::env::load_env;
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub struct Message {
+	pub role: String,
+	pub content: String,
+}
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
+pub struct Choice {
+	pub message: Message,
+}
+#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
+pub struct Response {
+	pub choices: Vec<Choice>,
+}
 
 /// more documentation can be found here <https://deepinfra.com/meta-llama/Meta-Llama-3.1-70B-Instruct/api?version=25acb1b514688b222a02a89c6976a8d7ad0e017f#input-model>
 #[derive(Clone, Serialize, Deserialize, Default, Debug, Builder, PartialEq)]

@@ -1,5 +1,6 @@
 use crate::error::Result;
-use crate::web::services::ai::{completions::CompletionClient, prompt::ARTICLE_TEMPLATE};
+use crate::prompts::ARTICLE_TEMPLATE;
+use crate::web::clients::CompletionClient;
 use crate::web::services::cache;
 use crate::web::services::youtube::YtService;
 use crate::web::utils::YTUrl;
