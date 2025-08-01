@@ -19,12 +19,13 @@ ARG CARGO_CACHE=/usr/local/cargo/registry/
 ARG CARGO_REGISTRY=/usr/local/cargo/registry/
 ARG GIT_CACHE=/usr/local/cargo/git/db
 ARG TARGET_CACHE=/app/target/
+ARG RAILWAY_SERVICE_ID=976b491c-79c5-4fa4-8f64-323a71a4cee6
 RUN --mount=type=bind,source=src,target=src \
     --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
     --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
-    --mount=type=cache,id=${APP_NAME}-${TARGET_CACHE},target=${TARGET_CACHE} \
-    --mount=type=cache,id=${APP_NAME}-${GIT_CACHE},target=${GIT_CACHE} \
-    --mount=type=cache,id=${APP_NAME}-${CARGO_REGISTRY},target=${CARGO_REGISTRY} \
+    --mount=type=cache,id=s/${RAILWAY_SERVICE_ID}-${TARGET_CACHE},target=${TARGET_CACHE} \
+    --mount=type=cache,id=s/${RAILWAY_SERVICE_ID}-${GIT_CACHE},target=${GIT_CACHE} \
+    --mount=type=cache,id=s/${RAILWAY_SERVICE_ID}-${CARGO_REGISTRY},target=${CARGO_REGISTRY} \
     cargo build --locked --release && \
     cp ./target/release/$APP_NAME /bin/server
 
