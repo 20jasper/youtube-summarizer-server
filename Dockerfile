@@ -20,9 +20,14 @@ ARG CARGO_REGISTRY=/usr/local/cargo/registry/
 ARG GIT_CACHE=/usr/local/cargo/git/db
 ARG TARGET_CACHE=/app/target/
 ARG RAILWAY_SERVICE_ID=976b491c-79c5-4fa4-8f64-323a71a4cee6
-RUN --mount=type=bind,source=src,target=src \
-    --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
-    --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
+COPY src src
+COPY Cargo.toml Cargo.toml
+COPY Cargo.Lock Cargo.Lock
+RUN \
+    # railway doesn't like bind mounts :(
+    # --mount=type=bind,source=src,target=src \
+    # --mount=type=bind,source=Cargo.toml,target=Cargo.toml \
+    # --mount=type=bind,source=Cargo.lock,target=Cargo.lock \
     --mount=type=cache,id=s/${RAILWAY_SERVICE_ID}-${TARGET_CACHE},target=${TARGET_CACHE} \
     --mount=type=cache,id=s/${RAILWAY_SERVICE_ID}-${GIT_CACHE},target=${GIT_CACHE} \
     --mount=type=cache,id=s/${RAILWAY_SERVICE_ID}-${CARGO_REGISTRY},target=${CARGO_REGISTRY} \
