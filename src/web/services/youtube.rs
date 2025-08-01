@@ -1,0 +1,50 @@
+use crate::web::clients::YtdlpClientBuilder;
+use crate::web::utils::YTUrl;
+use crate::{
+	error::{Error, Result},
+	web::services::{
+		cache::{self, Key},
+		env::load_env,
+		transcript::TranscriptState,
+	},
+};
+use reqwest::Url;
+
+pub struct YtService {
+	retries: u8,
+	proxy: Url,
+}
+
+impl YtService {
+	pub fn from_env() -> Result<Self> {
+		const YOUTUBE_PROXY: &str = "YOUTUBE_PROXY";
+		const YOUTUBE_RETRIES: &str = "YOUTUBE_RETRIES";
+		load_env()?;
+
+		let proxy = std::env::var(YOUTUBE_PROXY).map_err(|_| Error::EnvMissing(YOUTUBE_PROXY))?;
+		let proxy = Url::parse(&proxy)?;
+		let retries = std::env::var(YOUTUBE_RETRIES)
+			.ok()
+			.and_then(|s| s.parse::<u8>().ok())
+			.unwrap_or(3);
+
+		Ok(Self { retries, proxy })
+	}
+
+	pub fn fetch_captions(&self, url: &YTUrl) -> Result<String> {
+		if let Some(transcript) = cache::get(&Key {
+			url: url.clone(),
+			state: TranscriptState::Raw,
+		}) {
+			return Ok(transcript);
+		}
+
+		YtdlpClientBuilder::default()
+			.proxy(self.proxy.clone())
+			.retries(self.retries)
+			.download_subtitles(true)
+			.build()
+			.unwrap()
+			.request(url)
+	}
+}
