@@ -1,11 +1,9 @@
-use crate::web::services::transcript;
+use crate::error::Result;
+use crate::web::services::{transcript, youtube::YTUrl};
 use axum::{extract::Query, http::StatusCode, routing::get, Json, Router};
 use axum_macros::debug_handler;
 use serde::Deserialize;
 use serde_json::{json, Value};
-use url::Url;
-
-use crate::error::Result;
 
 #[derive(Deserialize)]
 struct TranscriptParams {
@@ -24,7 +22,7 @@ async fn transcript(
 		Json(json!(
 				{
 					"url": url,
-					"transcript":transcript::get_transcript_by_url(&Url::parse(&url)?, raw).await?
+					"transcript":transcript::get_transcript_by_url(&YTUrl::parse_from_str(&url)?, raw).await?
 				}
 		)),
 	))
@@ -44,7 +42,7 @@ async fn summarize(
 		StatusCode::OK,
 		Json(json!(
 				{
-					"summary":transcript::summarize_by_url(&Url::parse(&url)?).await?,
+					"summary":transcript::summarize_by_url(&YTUrl::parse_from_str(&url)?).await?,
 				}
 		)),
 	))

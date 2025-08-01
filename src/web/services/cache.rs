@@ -1,6 +1,6 @@
 use crate::error::Result;
-use crate::web::services::{transcript::TranscriptState, youtube};
-use reqwest::Url;
+use crate::web::services::transcript::TranscriptState;
+use crate::web::services::youtube::YTUrl;
 use std::{env, fs, path::PathBuf};
 
 pub fn get_artifact_dir() -> PathBuf {
@@ -9,8 +9,8 @@ pub fn get_artifact_dir() -> PathBuf {
 		.into()
 }
 
-pub fn get_artifact_path(url: &str, extension: &str) -> Option<PathBuf> {
-	let mut path = get_artifact_dir().join(youtube::get_video_id(url)?);
+pub fn get_artifact_path(url: &YTUrl, extension: &str) -> Option<PathBuf> {
+	let mut path = get_artifact_dir().join(url.id()?.into_owned());
 	path.set_extension(extension);
 
 	Some(path)
@@ -25,7 +25,7 @@ fn state_extension(state: TranscriptState) -> &'static str {
 }
 
 pub fn put(key: &Key, value: &str) -> Result<()> {
-	let path = get_artifact_path(key.url.as_str(), state_extension(key.state))
+	let path = get_artifact_path(&key.url, state_extension(key.state))
 		.ok_or("couldn't compute cache key")?;
 	fs::write(&path, value)?;
 
@@ -33,11 +33,11 @@ pub fn put(key: &Key, value: &str) -> Result<()> {
 }
 
 pub struct Key {
-	pub url: Url,
+	pub url: YTUrl,
 	pub state: TranscriptState,
 }
 pub fn get(key: &Key) -> Option<String> {
-	let path = get_artifact_path(key.url.as_str(), state_extension(key.state))?;
+	let path = get_artifact_path(&key.url, state_extension(key.state))?;
 
 	fs::read_to_string(&path).ok()
 }

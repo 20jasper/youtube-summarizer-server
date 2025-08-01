@@ -2,6 +2,7 @@ use axum::response::IntoResponse;
 use derive_more::From;
 use reqwest::StatusCode;
 use tokio::{task::JoinError, time::error::Elapsed};
+use url::Url;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
@@ -10,6 +11,8 @@ pub enum Error {
 	EnvMissing(&'static str),
 	#[from]
 	EnvParse(dotenvy::Error),
+
+	UnsupportedUrl(Url),
 
 	#[from]
 	Reqwest(reqwest::Error),
@@ -48,6 +51,9 @@ impl IntoResponse for Error {
 			}
 			E::Timeout(_) => (StatusCode::GATEWAY_TIMEOUT, "Gateway Timeout").into_response(),
 			E::Url(_) => (StatusCode::BAD_REQUEST, "Invalid URL").into_response(),
+			E::UnsupportedUrl(url) => {
+				(StatusCode::BAD_REQUEST, format!("Unsupported URL: {url:?}")).into_response()
+			}
 			E::Reqwest(_) | E::Join(_) | E::Io(_) | E::Custom(_) => {
 				(StatusCode::INTERNAL_SERVER_ERROR, "Unhandled Server Error").into_response()
 			}
