@@ -24,36 +24,37 @@ services:
       - OPEN_AI_API_KEY=${OPEN_AI_API_KEY:?must include OpenAI API key}
       - OPEN_AI_BASE_URL=${OPEN_AI_BASE_URL:? must include OpenAI base URL}
       - OPEN_AI_MODEL=${OPEN_AI_MODEL:? must include OpenAI model}
-# The commented out section below is an example of how to define a PostgreSQL
-# database that your application can use. `depends_on` tells Docker Compose to
-# start the database before your application. The `db-data` volume persists the
-# database data between container restarts. The `db-password` secret is used
-# to set the database password. You must create `db/password.txt` and add
-# a password of your choosing to it before running `docker compose up`.
-#     depends_on:
-#       db:
-#         condition: service_healthy
-#   db:
-#     image: postgres
-#     restart: always
-#     user: postgres
-#     secrets:
-#       - db-password
-#     volumes:
-#       - db-data:/var/lib/postgresql/data
-#     environment:
-#       - POSTGRES_DB=example
-#       - POSTGRES_PASSWORD_FILE=/run/secrets/db-password
-#     expose:
-#       - 5432
-#     healthcheck:
-#       test: [ "CMD", "pg_isready" ]
-#       interval: 10s
-#       timeout: 5s
-#       retries: 5
+    depends_on:
+      db:
+        condition: service_healthy
+  # The commented out section below is an example of how to define a PostgreSQL
+  # database that your application can use. `depends_on` tells Docker Compose to
+  # start the database before your application. The `db-data` volume persists the
+  # database data between container restarts. The `db-password` secret is used
+  # to set the database password. You must create `db/password.txt` and add
+  # a password of your choosing to it before running `docker compose up`.
+  db:
+    image: postgres:17.5
+    restart: always
+    user: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=example
+      - POSTGRES_PASSWORD=password
+    expose:
+      - 5432
+    ports:
+      - 5432:5432
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+volumes:
+  db-data:
 # volumes:
 #   db-data:
 # secrets:
 #   db-password:
 #     file: db/password.txt
-

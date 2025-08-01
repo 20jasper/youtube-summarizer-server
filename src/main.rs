@@ -1,5 +1,6 @@
 use axum::{routing::get, serve, Router};
 use core::net::SocketAddr;
+use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 use tokio::net::TcpListener;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use tracing::{event, Level};
@@ -10,8 +11,7 @@ pub mod error;
 pub mod prompts;
 pub mod web;
 
-#[tokio::main]
-async fn main() {
+fn init_tracing() {
 	tracing_subscriber::fmt()
 		.with_env_filter(
 			EnvFilter::try_from_default_env()
@@ -23,6 +23,29 @@ async fn main() {
 				.unwrap(),
 		)
 		.init();
+}
+
+async fn init_db() -> Result<Pool<Postgres>, sqlx::Error> {
+	tracing::info!("Connecting to the database...");
+	PgPoolOptions::new()
+		.max_connections(5)
+		.connect(&std::env::var("DATABASE_URL").expect("DATABASE_URL must be set"))
+		.await
+}
+
+#[tokio::main]
+async fn main() {
+	init_tracing();
+
+	let pool = init_db().await.unwrap();
+
+	let row: (i64,) = sqlx::query_as("SELECT $1")
+		.bind(150_i64)
+		.fetch_one(&pool)
+		.await
+		.unwrap();
+
+	assert_eq!(row.0, 150);
 
 	let routes = Router::new()
 		.route("/", get(|| async { "hello world" }))
