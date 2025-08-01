@@ -57,6 +57,7 @@ impl YTClient {
 			"--sub-format",
 			"vtt",
 			"--skip-download",
+			"--write-info-json",
 			"--retries",
 			self.retries.to_string().as_str(),
 			"--output",
