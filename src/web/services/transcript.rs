@@ -1,7 +1,7 @@
 use crate::error::Result;
-use crate::web::client::YTClient;
 use crate::web::services::ai::{completions::CompletionClient, prompt::ARTICLE_TEMPLATE};
 use crate::web::services::cache;
+use crate::web::services::youtube::YtService;
 use crate::web::utils::YTUrl;
 use core::str;
 use core::time::Duration;
@@ -21,7 +21,7 @@ pub async fn get_transcript_by_url(url: &YTUrl, raw: bool) -> Result<String> {
 	let transcript = timeout(
 		Duration::from_secs(30),
 		tokio::spawn(async move {
-			let client = YTClient::from_env()?;
+			let client = YtService::from_env()?;
 			client.fetch_captions(&owned_url)
 		}),
 	)
