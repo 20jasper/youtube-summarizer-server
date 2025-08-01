@@ -52,7 +52,7 @@ impl IntoResponse for Error {
 			E::Timeout(_) => (StatusCode::GATEWAY_TIMEOUT, "Gateway Timeout").into_response(),
 			E::Url(_) => (StatusCode::BAD_REQUEST, "Invalid URL").into_response(),
 			E::UnsupportedUrl(url) => {
-				(StatusCode::BAD_REQUEST, format!("Unsupported URL: {url:?}")).into_response()
+				(StatusCode::BAD_REQUEST, format!("Unsupported URL: {url}")).into_response()
 			}
 			E::Reqwest(_) | E::Join(_) | E::Io(_) | E::Custom(_) => {
 				(StatusCode::INTERNAL_SERVER_ERROR, "Unhandled Server Error").into_response()
