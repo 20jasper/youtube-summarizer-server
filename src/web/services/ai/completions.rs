@@ -1,12 +1,12 @@
 use std::env;
 
 use derive_builder::Builder;
-use dotenvy::dotenv;
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
 use crate::web::services::ai::deepinfra::{Message, Response};
+use crate::web::services::env::load_env;
 
 /// more documentation can be found here <https://deepinfra.com/meta-llama/Meta-Llama-3.1-70B-Instruct/api?version=25acb1b514688b222a02a89c6976a8d7ad0e017f#input-model>
 #[derive(Clone, Serialize, Deserialize, Default, Debug, Builder, PartialEq)]
@@ -71,7 +71,7 @@ impl CompletionClient {
 		const OPEN_AI_BASE_URL: &str = "OPEN_AI_BASE_URL";
 		const COMPLETIONS_PATH: &str = "chat/completions";
 
-		dotenv()?;
+		load_env()?;
 
 		let api_key = env::var(OPEN_AI_API_KEY).map_err(|_| Error::EnvMissing(OPEN_AI_API_KEY))?;
 		let model = env::var(OPEN_AI_MODEL).map_err(|_| Error::EnvMissing(OPEN_AI_MODEL))?;

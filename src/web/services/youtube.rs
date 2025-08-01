@@ -2,10 +2,10 @@ use crate::{
 	error::{Error, Result},
 	web::services::{
 		cache::{self, Key},
+		env::load_env,
 		transcript::TranscriptState,
 	},
 };
-use dotenvy::dotenv;
 use reqwest::Url;
 use std::process::Command;
 use std::{env, process::Output};
@@ -27,7 +27,7 @@ impl YTClient {
 	pub fn from_env() -> Result<Self> {
 		const YOUTUBE_PROXY: &str = "YOUTUBE_PROXY";
 		const YOUTUBE_RETRIES: &str = "YOUTUBE_RETRIES";
-		dotenv()?;
+		load_env()?;
 
 		let retries = env::var(YOUTUBE_RETRIES)
 			.ok()
