@@ -1,12 +1,10 @@
 use crate::error::Result;
 use crate::web::services::ai::{completions::CompletionClient, prompt::ARTICLE_TEMPLATE};
 use crate::web::services::cache;
-use crate::web::services::youtube::YTClient;
-
+use crate::web::services::youtube::{YTClient, YTUrl};
 use core::str;
 use core::time::Duration;
 use regex::Regex;
-use reqwest::Url;
 use std::borrow::Cow;
 use tokio::time::timeout;
 
@@ -17,7 +15,7 @@ pub enum TranscriptState {
 	Summarized,
 }
 
-pub async fn get_transcript_by_url(url: &Url, raw: bool) -> Result<String> {
+pub async fn get_transcript_by_url(url: &YTUrl, raw: bool) -> Result<String> {
 	println!("getting transcript for {url:?}, raw {raw:?}");
 
 	let owned_url = url.to_owned();
@@ -43,7 +41,7 @@ pub async fn get_transcript_by_url(url: &Url, raw: bool) -> Result<String> {
 	Ok(if raw { transcript } else { clean })
 }
 
-pub async fn summarize_by_url(url: &Url) -> Result<String> {
+pub async fn summarize_by_url(url: &YTUrl) -> Result<String> {
 	println!("summarizing {url:?}");
 
 	if let Some(summary) = cache::get(&cache::Key {
