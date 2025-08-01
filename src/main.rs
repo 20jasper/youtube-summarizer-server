@@ -14,7 +14,11 @@ async fn main() {
 	tracing_subscriber::fmt()
 		.with_env_filter(
 			EnvFilter::try_from_default_env()
-				.or_else(|_| EnvFilter::try_new("youtube_summarizer_server=trace,tower_http=debug"))
+				.or_else(|_| {
+					EnvFilter::try_new(
+						"youtube_summarizer_server=trace,tower_http=debug,reqwest=trace",
+					)
+				})
 				.unwrap(),
 		)
 		.init();

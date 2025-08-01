@@ -1,6 +1,5 @@
-use crate::error::Result;
 use crate::web::services::transcript::TranscriptState;
-use crate::web::services::youtube::YTUrl;
+use crate::{error::Result, web::utils::YTUrl};
 use std::{env, fs, path::PathBuf};
 
 pub fn get_artifact_dir() -> PathBuf {

@@ -1,4 +1,4 @@
-use crate::web::services::youtube::YTUrl;
+use crate::web::utils::YTUrl;
 use axum::response::IntoResponse;
 use derive_more::From;
 use reqwest::StatusCode;
