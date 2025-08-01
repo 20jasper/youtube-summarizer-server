@@ -1,7 +1,8 @@
 use crate::error::Result;
+use crate::web::client::YTClient;
 use crate::web::services::ai::{completions::CompletionClient, prompt::ARTICLE_TEMPLATE};
 use crate::web::services::cache;
-use crate::web::services::youtube::{YTClient, YTUrl};
+use crate::web::utils::YTUrl;
 use core::str;
 use core::time::Duration;
 use regex::Regex;

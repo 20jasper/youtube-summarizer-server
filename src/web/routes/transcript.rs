@@ -1,5 +1,5 @@
-use crate::error::Result;
-use crate::web::services::{transcript, youtube::YTUrl};
+use crate::web::services::transcript;
+use crate::{error::Result, web::utils::YTUrl};
 use axum::{extract::Query, http::StatusCode, routing::get, Json, Router};
 use axum_macros::debug_handler;
 use serde::Deserialize;

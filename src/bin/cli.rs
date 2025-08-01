@@ -1,7 +1,6 @@
 use std::env;
-
 use youtube_summarizer_server as yss;
-use youtube_summarizer_server::web::services::youtube::YTUrl;
+use youtube_summarizer_server::web::utils::YTUrl;
 use yss::error::Result;
 use yss::web::services::transcript;
 
