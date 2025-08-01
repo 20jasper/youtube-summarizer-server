@@ -1,3 +1,4 @@
+use crate::web::services::youtube::YTUrl;
 use axum::response::IntoResponse;
 use derive_more::From;
 use reqwest::StatusCode;
@@ -13,6 +14,7 @@ pub enum Error {
 	#[from]
 	EnvParse(dotenvy::Error),
 
+	CaptionsUnavailable(YTUrl),
 	UnsupportedUrl(Url),
 
 	#[from]
@@ -55,6 +57,11 @@ impl IntoResponse for Error {
 			E::UnsupportedUrl(url) => {
 				(StatusCode::BAD_REQUEST, format!("Unsupported URL: {url}")).into_response()
 			}
+			E::CaptionsUnavailable(url) => (
+				StatusCode::NOT_FOUND,
+				format!("Captions not available for URL: {}", url.as_str()),
+			)
+				.into_response(),
 			E::Reqwest(_) | E::Join(_) | E::Io(_) | E::Custom(_) => {
 				(StatusCode::INTERNAL_SERVER_ERROR, "Unhandled Server Error").into_response()
 			}
