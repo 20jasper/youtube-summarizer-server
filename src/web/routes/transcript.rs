@@ -18,12 +18,10 @@ async fn transcript(
 ) -> Result<(StatusCode, Json<Value>)> {
 	let url = YTUrl::parse_from_str(&url)?;
 
-	let transcript = if let Ok(row) = sqlx::query!(
-		"SELECT subtitles FROM videos WHERE video_id = $1",
-		url.id_string()
-	)
-	.fetch_one(&pool)
-	.await
+	let transcript = if let Ok(row) =
+		sqlx::query!("SELECT subtitles FROM videos WHERE video_id = $1", url.id())
+			.fetch_one(&pool)
+			.await
 	{
 		tracing::debug!("found transcript in database");
 		row.subtitles
@@ -32,7 +30,7 @@ async fn transcript(
 
 		sqlx::query!(
 			"INSERT INTO videos (video_id, subtitles) VALUES ($1, $2)",
-			url.id_string(),
+			url.id(),
 			transcript
 		)
 		.execute(&pool)
@@ -68,7 +66,7 @@ async fn summarize(
 			FROM videos 
 			WHERE video_id = $1 AND summary IS NOT NULL
 		",
-		url.id_string()
+		url.id()
 	)
 	.fetch_one(&pool)
 	.await
@@ -82,7 +80,7 @@ async fn summarize(
 		sqlx::query!(
 			"UPDATE videos SET summary = $1 WHERE video_id = $2",
 			summary,
-			url.id_string(),
+			url.id(),
 		)
 		.execute(&pool)
 		.await?;

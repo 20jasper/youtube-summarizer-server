@@ -2,9 +2,12 @@ use crate::error::{Error, Result};
 use reqwest::Url;
 use std::borrow::Cow;
 
+const VIDEO_PARAM: &str = "v";
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct YTUrl {
 	url: Url,
+	id: String,
 }
 
 impl YTUrl {
@@ -12,8 +15,10 @@ impl YTUrl {
 		const YOUTUBE: &str = "youtube";
 		if let Some(host) = url.host_str()
 			&& host.contains(YOUTUBE)
+			&& let Some(id) = Self::try_get_id(&url)
 		{
-			Ok(Self { url })
+			let id = id.to_string();
+			Ok(Self { url, id })
 		} else {
 			Err(Error::UnsupportedUrl(url))
 		}
@@ -32,16 +37,14 @@ impl YTUrl {
 		self.url.as_str()
 	}
 
-	pub fn id(&self) -> Option<Cow<'_, str>> {
-		self.as_url()
-			.query_pairs()
-			.find(|(key, _)| key == "v")
+	fn try_get_id(url: &Url) -> Option<Cow<'_, str>> {
+		url.query_pairs()
+			.find(|(key, _)| key == VIDEO_PARAM)
 			.map(|(_, id)| id)
 	}
 
-	pub fn id_string(&self) -> Option<String> {
-		self.id()
-			.map(std::borrow::Cow::into_owned)
+	pub fn id(&self) -> &str {
+		&self.id
 	}
 }
 
@@ -57,14 +60,20 @@ mod tests {
 	fn should_get_video_id() -> Result<()> {
 		let url = YTUrl::parse_from_str(YT_URL)?;
 
-		assert_eq!(url.id(), Some(YT_ID.into()));
+		assert_eq!(url.id(), YT_ID);
 
 		Ok(())
 	}
 
 	#[test]
-	fn invalid_url() {
+	fn invalid_host() {
 		let invalid_url = "https://lasagna.com/watch?v=DjcC6p_8fpE";
+		YTUrl::parse_from_str(invalid_url).unwrap_err();
+	}
+
+	#[test]
+	fn missing_v_param() {
+		let invalid_url = "https://youtube.com/watch";
 		YTUrl::parse_from_str(invalid_url).unwrap_err();
 	}
 }
