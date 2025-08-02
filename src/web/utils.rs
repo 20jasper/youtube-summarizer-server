@@ -10,10 +10,8 @@ pub struct YTUrl {
 impl YTUrl {
 	pub fn parse_from_url(url: Url) -> Result<Self> {
 		const YOUTUBE: &str = "youtube";
-		const YOUTUBEDOTBE: &str = "youtu.be";
-		if url
-			.host_str()
-			.is_some_and(|host| host.contains(YOUTUBE) || host.contains(YOUTUBEDOTBE))
+		if let Some(host) = url.host_str()
+			&& host.contains(YOUTUBE)
 		{
 			Ok(Self { url })
 		} else {
