@@ -1,10 +1,10 @@
 use crate::web::services::transcript;
 use crate::{error::Result, web::utils::YTUrl};
 use axum::extract::State;
-use axum::{extract::Query, http::StatusCode, routing::get, Json, Router};
+use axum::{Json, Router, extract::Query, http::StatusCode, routing::get};
 use axum_macros::debug_handler;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use sqlx::PgPool;
 
 #[derive(Deserialize)]

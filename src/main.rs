@@ -1,9 +1,9 @@
-use axum::{routing::get, serve, Router};
+use axum::{Router, routing::get, serve};
 use core::net::SocketAddr;
-use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
+use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
 use tokio::net::TcpListener;
 use tower_http::{services::ServeDir, trace::TraceLayer};
-use tracing::{event, Level};
+use tracing::{Level, event};
 use tracing_subscriber::EnvFilter;
 use web::routes::transcript;
 use youtube_summarizer_server::web::services::env::load_env;
