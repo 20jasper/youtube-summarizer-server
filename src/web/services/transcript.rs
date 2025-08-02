@@ -1,7 +1,6 @@
 use crate::error::Result;
 use crate::prompts::ARTICLE_TEMPLATE;
 use crate::web::clients::CompletionClient;
-use crate::web::services::cache;
 use crate::web::services::youtube::YtService;
 use crate::web::utils::YTUrl;
 use core::str;
@@ -10,14 +9,7 @@ use regex::Regex;
 use std::borrow::Cow;
 use tokio::time::timeout;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TranscriptState {
-	Raw,
-	Clean,
-	Summarized,
-}
-
-pub async fn get_transcript_by_url(url: &YTUrl, raw: bool) -> Result<String> {
+pub async fn get_transcript_by_url(url: &YTUrl) -> Result<String> {
 	let owned_url = url.to_owned();
 	let transcript = timeout(
 		Duration::from_secs(30),
@@ -30,39 +22,15 @@ pub async fn get_transcript_by_url(url: &YTUrl, raw: bool) -> Result<String> {
 
 	tracing::debug!("fetched transcript");
 
-	let clean = clean_vtt(&transcript);
-	cache::put(
-		&cache::Key {
-			url: url.clone(),
-			state: TranscriptState::Clean,
-		},
-		&clean,
-	)?;
-
-	Ok(if raw { transcript } else { clean })
+	Ok(clean_vtt(&transcript))
 }
 
 pub async fn summarize_by_url(url: &YTUrl) -> Result<String> {
-	if let Some(summary) = cache::get(&cache::Key {
-		url: url.clone(),
-		state: TranscriptState::Summarized,
-	}) {
-		return Ok(summary);
-	}
-
 	let summary = CompletionClient::from_env()?
-		.post(ARTICLE_TEMPLATE, &get_transcript_by_url(url, false).await?)
+		.post(ARTICLE_TEMPLATE, &get_transcript_by_url(url).await?)
 		.await?;
 
 	tracing::debug!("summarized transcript");
-
-	cache::put(
-		&cache::Key {
-			url: url.clone(),
-			state: TranscriptState::Summarized,
-		},
-		&summary,
-	)?;
 
 	Ok(summary)
 }
