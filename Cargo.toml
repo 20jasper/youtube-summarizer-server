@@ -80,6 +80,7 @@ modulo_arithmetic = "warn"
 needless_raw_strings = "warn"
 rc_buffer = "warn"
 rc_mutex = "warn"
+redundant_test_prefix = "warn"
 same_name_method = "warn"
 semicolon_outside_block = "warn"
 string_lit_chars_any = "warn"
@@ -94,3 +95,10 @@ unnecessary_self_imports = "warn"
 unneeded_field_pattern = "warn"
 unseparated_literal_suffix = "warn"
 verbose_file_reads = "warn"
+
+# style
+unnecessary_map_or = "warn"
+
+# complexity
+manual_is_multiple_of = "warn"
+useless_concat = "warn"
