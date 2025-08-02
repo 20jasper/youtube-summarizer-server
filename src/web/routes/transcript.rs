@@ -81,8 +81,8 @@ async fn summarize(
 
 		sqlx::query!(
 			"UPDATE videos SET summary = $1 WHERE video_id = $2",
+			summary,
 			url.id_string(),
-			summary
 		)
 		.execute(&pool)
 		.await?;
