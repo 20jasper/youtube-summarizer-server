@@ -2,13 +2,12 @@
 //!
 //! Abstracts implementation details like file system reads
 
+mod cache;
+
 use crate::web::utils::YTUrl;
 use crate::{
 	error::{Error, Result},
-	web::services::{
-		cache::{self, Key},
-		transcript::TranscriptState,
-	},
+	web::services::transcript::TranscriptState,
 };
 use derive_builder::Builder;
 use reqwest::Url;
@@ -88,7 +87,7 @@ impl YtdlpClient {
 		}
 
 		// ytdlp will write to a file in the output dir
-		cache::get(&Key {
+		cache::get(&cache::Key {
 			url: url.clone(),
 			state: TranscriptState::Raw,
 		})

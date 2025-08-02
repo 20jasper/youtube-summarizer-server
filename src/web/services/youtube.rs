@@ -2,11 +2,7 @@ use crate::web::clients::YtdlpClientBuilder;
 use crate::web::utils::YTUrl;
 use crate::{
 	error::{Error, Result},
-	web::services::{
-		cache::{self, Key},
-		env::load_env,
-		transcript::TranscriptState,
-	},
+	web::services::env::load_env,
 };
 use reqwest::Url;
 
@@ -32,13 +28,6 @@ impl YtService {
 	}
 
 	pub fn fetch_captions(&self, url: &YTUrl) -> Result<String> {
-		if let Some(transcript) = cache::get(&Key {
-			url: url.clone(),
-			state: TranscriptState::Raw,
-		}) {
-			return Ok(transcript);
-		}
-
 		YtdlpClientBuilder::default()
 			.proxy(self.proxy.clone())
 			.retries(self.retries)
