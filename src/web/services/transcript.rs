@@ -45,11 +45,36 @@ pub async fn get_transcript_by_url(url: &YTUrl, pool: &PgPool) -> Result<String>
 }
 
 pub async fn summarize_by_url(url: &YTUrl, pool: &PgPool) -> Result<String> {
-	let summary = CompletionClient::from_env()?
-		.post(ARTICLE_TEMPLATE, &get_transcript_by_url(url, pool).await?)
+	let summary = if let Ok(row) = sqlx::query!(
+		r"
+			SELECT summary 
+			FROM videos 
+			WHERE video_id = $1 AND summary IS NOT NULL
+		",
+		url.id()
+	)
+	.fetch_one(pool)
+	.await
+	{
+		tracing::debug!("found summary in database");
+		row.summary
+			.expect("Summary should not be null")
+	} else {
+		let summary = CompletionClient::from_env()?
+			.post(ARTICLE_TEMPLATE, &get_transcript_by_url(url, pool).await?)
+			.await?;
+		tracing::debug!("summarized transcript");
+
+		sqlx::query!(
+			"UPDATE videos SET summary = $1 WHERE video_id = $2",
+			summary,
+			url.id(),
+		)
+		.execute(pool)
 		.await?;
 
-	tracing::debug!("summarized transcript");
+		summary
+	};
 
 	Ok(summary)
 }
