@@ -1,6 +1,9 @@
 //! retrieves files saved by the yt-dlp client
 
-use crate::{error::Result, web::utils::YTUrl};
+use crate::{
+	error::{Error, Result},
+	web::utils::YTUrl,
+};
 use std::{env, fs, path::PathBuf};
 
 const EXT: &str = "en.vtt";
@@ -11,22 +14,22 @@ pub fn get_artifact_dir() -> PathBuf {
 		.into()
 }
 
-pub fn get_artifact_path(url: &YTUrl) -> Option<PathBuf> {
-	let mut path = get_artifact_dir().join(url.id()?.into_owned());
+pub fn get_artifact_path(url: &YTUrl) -> std::path::PathBuf {
+	let mut path = get_artifact_dir().join(url.id_string());
 	path.set_extension(EXT);
-
-	Some(path)
+	path
 }
 
-pub fn delete(url: &YTUrl) -> Result<()> {
-	let path = get_artifact_path(url).ok_or("couldn't compute cache key")?;
-	fs::remove_file(&path)?;
+/// retrieves and removes the value
+pub fn extract(url: &YTUrl) -> Result<String> {
+	let path = get_artifact_path(url);
 
-	Ok(())
-}
+	let val = fs::read_to_string(&path).map_err(|_| Error::CaptionsUnavailable(url.clone()));
 
-pub fn get(url: &YTUrl) -> Option<String> {
-	let path = get_artifact_path(url)?;
+	// delete to not waste space
+	if let Err(e) = fs::remove_file(&path) {
+		tracing::error!("failed to delete file {path}: {e}", path = path.display());
+	}
 
-	fs::read_to_string(&path).ok()
+	val
 }

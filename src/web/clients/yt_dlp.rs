@@ -4,7 +4,7 @@
 
 mod cache;
 
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::web::utils::YTUrl;
 use derive_builder::Builder;
 use reqwest::Url;
@@ -83,11 +83,6 @@ impl YtdlpClient {
 			.into());
 		}
 
-		// ytdlp will write to a file in the output dir
-		let transcript = cache::get(url).ok_or(Error::CaptionsUnavailable(url.clone()));
-		// to not waste file system space
-		cache::delete(url)?;
-
-		transcript
+		cache::extract(url)
 	}
 }
