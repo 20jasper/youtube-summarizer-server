@@ -15,7 +15,7 @@ pub fn get_artifact_dir() -> PathBuf {
 }
 
 pub fn get_artifact_path(url: &YTUrl) -> std::path::PathBuf {
-	let mut path = get_artifact_dir().join(url.id_string());
+	let mut path = get_artifact_dir().join(url.id());
 	path.set_extension(EXT);
 	path
 }

@@ -7,6 +7,7 @@ const VIDEO_PARAM: &str = "v";
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct YTUrl {
 	url: Url,
+	id: String,
 }
 
 impl YTUrl {
@@ -14,9 +15,10 @@ impl YTUrl {
 		const YOUTUBE: &str = "youtube";
 		if let Some(host) = url.host_str()
 			&& host.contains(YOUTUBE)
-			&& (Self::try_get_id(&url).is_some())
+			&& let Some(id) = Self::try_get_id(&url)
 		{
-			Ok(Self { url })
+			let id = id.to_string();
+			Ok(Self { url, id })
 		} else {
 			Err(Error::UnsupportedUrl(url))
 		}
@@ -41,12 +43,8 @@ impl YTUrl {
 			.map(|(_, id)| id)
 	}
 
-	pub fn id(&self) -> Cow<'_, str> {
-		Self::try_get_id(self.as_url()).unwrap()
-	}
-
-	pub fn id_string(&self) -> String {
-		self.id().into_owned()
+	pub fn id(&self) -> &str {
+		&self.id
 	}
 }
 
