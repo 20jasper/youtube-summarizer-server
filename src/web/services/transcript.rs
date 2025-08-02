@@ -93,6 +93,9 @@ an entire video for 30 minutes and then
 an entire video for 30 minutes and then
 realizing<00:00:07.359><c> you</c><00:00:07.520><c> forgot</c><00:00:07.839><c> to</c><00:00:08.080><c> plug</c><00:00:08.280><c> in</c><00:00:08.440><c> your</c>";
 
-		assert_eq!(clean_vtt(vtt), "[Music] you know what's really not fun recording an entire video for 30 minutes and then");
+		assert_eq!(
+			clean_vtt(vtt),
+			"[Music] you know what's really not fun recording an entire video for 30 minutes and then"
+		);
 	}
 }

@@ -3,7 +3,7 @@ use axum::response::IntoResponse;
 use derive_more::From;
 use reqwest::StatusCode;
 use tokio::{task::JoinError, time::error::Elapsed};
-use tracing::{event, Level};
+use tracing::{Level, event};
 use url::Url;
 
 pub type Result<T> = core::result::Result<T, Error>;
