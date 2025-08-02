@@ -47,14 +47,6 @@ async fn main() {
 		.await
 		.unwrap();
 
-	let row: (i64,) = sqlx::query_as("SELECT $1")
-		.bind(150_i64)
-		.fetch_one(&pool)
-		.await
-		.unwrap();
-
-	assert_eq!(row.0, 150);
-
 	let routes = Router::new()
 		.route("/", get(|| async { "hello world" }))
 		.merge(transcript::routes())
