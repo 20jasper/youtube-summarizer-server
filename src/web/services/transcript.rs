@@ -6,28 +6,47 @@ use crate::web::utils::YTUrl;
 use core::str;
 use core::time::Duration;
 use regex::Regex;
+use sqlx::PgPool;
 use std::borrow::Cow;
 use tokio::time::timeout;
 
-pub async fn get_transcript_by_url(url: &YTUrl) -> Result<String> {
-	let owned_url = url.to_owned();
-	let transcript = timeout(
-		Duration::from_secs(30),
-		tokio::spawn(async move {
-			let client = YtService::from_env()?;
-			client.fetch_captions(&owned_url)
-		}),
-	)
-	.await???;
+pub async fn get_transcript_by_url(url: &YTUrl, pool: &PgPool) -> Result<String> {
+	let transcript = if let Ok(row) =
+		sqlx::query!("SELECT subtitles FROM videos WHERE video_id = $1", url.id())
+			.fetch_one(pool)
+			.await
+	{
+		tracing::debug!("found transcript in database");
+		row.subtitles
+	} else {
+		let owned_url = url.to_owned();
+		let transcript = timeout(
+			Duration::from_secs(30),
+			tokio::spawn(async move {
+				let client = YtService::from_env()?;
+				client.fetch_captions(&owned_url)
+			}),
+		)
+		.await???;
+		tracing::debug!("fetched transcript");
 
-	tracing::debug!("fetched transcript");
+		sqlx::query!(
+			"INSERT INTO videos (video_id, subtitles) VALUES ($1, $2)",
+			url.id(),
+			&transcript
+		)
+		.execute(pool)
+		.await?;
+
+		transcript
+	};
 
 	Ok(clean_vtt(&transcript))
 }
 
-pub async fn summarize_by_url(url: &YTUrl) -> Result<String> {
+pub async fn summarize_by_url(url: &YTUrl, pool: &PgPool) -> Result<String> {
 	let summary = CompletionClient::from_env()?
-		.post(ARTICLE_TEMPLATE, &get_transcript_by_url(url).await?)
+		.post(ARTICLE_TEMPLATE, &get_transcript_by_url(url, pool).await?)
 		.await?;
 
 	tracing::debug!("summarized transcript");
