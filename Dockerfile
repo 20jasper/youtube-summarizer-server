@@ -29,6 +29,9 @@ WORKDIR /app
 ARG APP_NAME=youtube-summarizer-server
 COPY --from=builder /app/target/release/${APP_NAME} /usr/local/bin
 
+COPY --from=builder /app/public /var/www
+ENV PUBLIC_DIR=/var/www
+
 RUN pip install "yt-dlp[default,curl-cffi]" && \
     pip install requests
 

@@ -1,6 +1,7 @@
 use axum::{Router, routing::get, serve};
 use core::net::{Ipv4Addr, SocketAddr};
 use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
+use std::env;
 use tokio::net::TcpListener;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use tracing::{Level, event};
@@ -51,7 +52,9 @@ async fn main() {
 		.route("/", get(|| async { "hello world" }))
 		.merge(transcript::routes())
 		// layers run from bottom to top
-		.fallback_service(ServeDir::new("public/"))
+		.fallback_service(ServeDir::new(
+			env::var("PUBLIC_DIR").unwrap_or("public/".into()),
+		))
 		.layer(TraceLayer::new_for_http())
 		.with_state(pool);
 
