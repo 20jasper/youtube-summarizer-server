@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 axum = { version = "0.8.4", features = ["json"] }
-axum-macros = "0.4.1"
+axum-macros = "0.5.0"
 derive_builder = "0.20.2"
 derive_more = { version = "2.0.1", features = ["from"] }
 dotenvy = "0.15.7"
