@@ -28,7 +28,7 @@ async fn transcript(
 		tracing::debug!("found transcript in database");
 		row.subtitles
 	} else {
-		let transcript = transcript::get_transcript_by_url(&url, false).await?;
+		let transcript = transcript::get_transcript_by_url(&url).await?;
 
 		sqlx::query!(
 			"INSERT INTO videos (video_id, subtitles) VALUES ($1, $2)",
