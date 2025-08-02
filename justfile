@@ -21,3 +21,6 @@ format-check:
 # lint rust
 lint:
     cargo clippy --all-targets --all-features
+
+sqlx:
+    cargo sqlx prepare 
