@@ -4,11 +4,8 @@
 
 mod cache;
 
+use crate::error::{Error, Result};
 use crate::web::utils::YTUrl;
-use crate::{
-	error::{Error, Result},
-	web::services::transcript::TranscriptState,
-};
 use derive_builder::Builder;
 use reqwest::Url;
 use std::process::Command;
@@ -87,10 +84,10 @@ impl YtdlpClient {
 		}
 
 		// ytdlp will write to a file in the output dir
-		cache::get(&cache::Key {
-			url: url.clone(),
-			state: TranscriptState::Raw,
-		})
-		.ok_or(Error::CaptionsUnavailable(url.clone()))
+		let transcript = cache::get(url).ok_or(Error::CaptionsUnavailable(url.clone()));
+		// to not waste file system space
+		cache::delete(url)?;
+
+		transcript
 	}
 }

@@ -9,13 +9,6 @@ use regex::Regex;
 use std::borrow::Cow;
 use tokio::time::timeout;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TranscriptState {
-	Raw,
-	Clean,
-	Summarized,
-}
-
 pub async fn get_transcript_by_url(url: &YTUrl) -> Result<String> {
 	let owned_url = url.to_owned();
 	let transcript = timeout(
