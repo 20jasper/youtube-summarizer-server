@@ -58,12 +58,42 @@ struct SummaryParams {
 #[debug_handler]
 async fn summarize(
 	Query(SummaryParams { url }): Query<SummaryParams>,
+	State(pool): State<PgPool>,
 ) -> Result<(StatusCode, Json<Value>)> {
+	let url = YTUrl::parse_from_str(&url)?;
+
+	let summary = if let Ok(row) = sqlx::query!(
+		r"
+			SELECT summary 
+			FROM videos 
+			WHERE video_id = $1 AND summary IS NOT NULL
+		",
+		url.id_string()
+	)
+	.fetch_one(&pool)
+	.await
+	{
+		tracing::debug!("found summary in database");
+		row.summary
+			.expect("Summary should not be null")
+	} else {
+		let summary = transcript::summarize_by_url(&url).await?;
+
+		sqlx::query!(
+			"UPDATE videos SET summary = $1 WHERE video_id = $2",
+			url.id_string(),
+			summary
+		)
+		.execute(&pool)
+		.await?;
+
+		summary
+	};
 	Ok((
 		StatusCode::OK,
 		Json(json!(
 				{
-					"summary":transcript::summarize_by_url(&YTUrl::parse_from_str(&url)?).await?,
+					"summary": summary,
 				}
 		)),
 	))
