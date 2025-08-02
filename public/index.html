@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YouTube Summarizer</title>
+    <style>
+      main {
+        width: 100ch;
+        display: flex;
+        justify-content: center;
+        flex-direction: column;
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>YouTube Summarizer</h1>
+      <form>
+        <label>
+          YouTube Video link
+          <input type="url" name="link" required />
+        </label>
+        <button type="submit">Get summary</button>
+      </form>
+      <div id="output"></div>
+    </main>
+    <script type="module">
+      import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js";
+      // @ts-check
+      const PARAM = "url";
+
+      const output = document.querySelector("#output");
+      const button = document.querySelector("button");
+      const form = document.querySelector("form");
+
+      if (!output || !button || !form) {
+        throw new Error("Required elements not found in the document");
+      }
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        console.log("form submitted", event.target.link.value);
+        window.location.search = `?${PARAM}=${event.target.link.value}`;
+      });
+
+      const link = new URLSearchParams(window.location.search).get(PARAM);
+      console.log("getting param", link);
+
+      if (link) {
+        button.disabled = true;
+        output.innerHTML = `<p>Loading summary for <a href=${link}>${link}</a>...</p><p>It may take a 30-60 seconds if uncached</p>`;
+        fetch(`/summary?url=${link}`)
+          .then((response) => response.json())
+          .then(({ summary }) => {
+            console.log({ summary });
+            output.innerHTML = marked.parse(summary);
+          })
+          .catch((error) => {
+            output.innerHTML = `<p>Error fetching transcript: ${error.message}</p>`;
+          })
+          .finally(() => {
+            button.disabled = false;
+          });
+      } else {
+        output.innerHTML = "<p>Please provide a video</p>";
+      }
+    </script>
+  </body>
+</html>
