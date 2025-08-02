@@ -10,8 +10,10 @@ pub struct YTUrl {
 	id: String,
 }
 
-impl YTUrl {
-	pub fn parse_from_url(url: Url) -> Result<Self> {
+impl TryFrom<Url> for YTUrl {
+	type Error = Error;
+
+	fn try_from(url: Url) -> Result<Self> {
 		const YOUTUBE: &str = "youtube";
 		if let Some(host) = url.host_str()
 			&& host.contains(YOUTUBE)
@@ -23,12 +25,18 @@ impl YTUrl {
 			Err(Error::UnsupportedUrl(url))
 		}
 	}
+}
 
-	pub fn parse_from_str(url: &str) -> Result<Self> {
+impl TryFrom<&str> for YTUrl {
+	type Error = Error;
+
+	fn try_from(url: &str) -> Result<Self> {
 		let url = Url::parse(url)?;
-		Self::parse_from_url(url)
+		Self::try_from(url)
 	}
+}
 
+impl YTUrl {
 	pub fn as_url(&self) -> &Url {
 		&self.url
 	}
@@ -58,7 +66,7 @@ mod tests {
 
 	#[test]
 	fn should_get_video_id() -> Result<()> {
-		let url = YTUrl::parse_from_str(YT_URL)?;
+		let url = YTUrl::try_from(YT_URL)?;
 
 		assert_eq!(url.id(), YT_ID);
 
@@ -68,12 +76,12 @@ mod tests {
 	#[test]
 	fn invalid_host() {
 		let invalid_url = "https://lasagna.com/watch?v=DjcC6p_8fpE";
-		YTUrl::parse_from_str(invalid_url).unwrap_err();
+		YTUrl::try_from(invalid_url).unwrap_err();
 	}
 
 	#[test]
 	fn missing_v_param() {
 		let invalid_url = "https://youtube.com/watch";
-		YTUrl::parse_from_str(invalid_url).unwrap_err();
+		YTUrl::try_from(invalid_url).unwrap_err();
 	}
 }

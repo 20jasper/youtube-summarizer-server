@@ -1,5 +1,5 @@
+use crate::error::Result;
 use crate::web::services::transcript;
-use crate::{error::Result, web::utils::YTUrl};
 use axum::extract::State;
 use axum::{Json, Router, extract::Query, http::StatusCode, routing::get};
 use axum_macros::debug_handler;
@@ -20,7 +20,7 @@ async fn transcript(
 		StatusCode::OK,
 		Json(json!(
 				{
-					"transcript": transcript::get_transcript_by_url(&YTUrl::parse_from_str(&url)?, &pool).await?
+					"transcript": transcript::get_transcript_by_url(&url.as_str().try_into()?, &pool).await?
 				}
 		)),
 	))
@@ -39,7 +39,7 @@ async fn summarize(
 		StatusCode::OK,
 		Json(json!(
 				{
-					"summary": transcript::summarize_by_url(&YTUrl::parse_from_str(&url)?, &pool).await?,
+					"summary": transcript::summarize_by_url(&url.as_str().try_into()?, &pool).await?,
 				}
 		)),
 	))
