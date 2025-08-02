@@ -1,5 +1,5 @@
 use axum::{Router, routing::get, serve};
-use core::net::SocketAddr;
+use core::net::{Ipv4Addr, SocketAddr};
 use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
 use tokio::net::TcpListener;
 use tower_http::{services::ServeDir, trace::TraceLayer};
@@ -55,7 +55,7 @@ async fn main() {
 		.layer(TraceLayer::new_for_http())
 		.with_state(pool);
 
-	let address = SocketAddr::from(([0, 0, 0, 0], 8080));
+	let address = SocketAddr::from((Ipv4Addr::UNSPECIFIED, 8080));
 	let listener = TcpListener::bind(address)
 		.await
 		.unwrap();
