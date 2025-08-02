@@ -1,0 +1,16 @@
+assert_lefthook_installed: true
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: format
+      run: just format
+      stage_fixed: true
+    - name: sqlx
+      run: just sqlx
+      stage_fixed: true
+
+pre-push:
+  jobs:
+    - name: lint
+      run: just lint

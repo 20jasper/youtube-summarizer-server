@@ -26,6 +26,7 @@ The purpose of this project is **not** to
 | cargo-watch | `cargo install cargo-watch`                                              |
 | just        | `cargo install just`                                                     |
 | npm         | [Install NodeJS](https://nodejs.org/en/download)                         |
+| lefthook    | [Install lefthook](https://lefthook.dev/installation/index.html)         |
 
 ### Commands
 
