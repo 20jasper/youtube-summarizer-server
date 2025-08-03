@@ -21,7 +21,7 @@ pub async fn get_transcript_by_url(
 			.await
 	{
 		tracing::debug!("found transcript in database");
-		clean_vtt(&row.subtitles)
+		row.subtitles
 	} else {
 		let owned_url = url.to_owned();
 		let transcript = timeout(
