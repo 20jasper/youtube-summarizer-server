@@ -29,12 +29,14 @@ fn init_tracing() {
 
 async fn init_db() -> Result<Pool<Postgres>, sqlx::Error> {
 	tracing::info!("Connecting to the database...");
-	let db = PgPoolOptions::new()
+	let pool = PgPoolOptions::new()
 		.max_connections(5)
 		.connect(&std::env::var("DATABASE_URL").expect("DATABASE_URL must be set"))
-		.await;
+		.await?;
+	sqlx::migrate!().run(&pool).await?;
 	tracing::info!("Connected to the database");
-	db
+
+	Ok(pool)
 }
 
 #[tokio::main]
@@ -43,10 +45,6 @@ async fn main() {
 	init_tracing();
 
 	let pool = init_db().await.unwrap();
-	sqlx::migrate!()
-		.run(&pool)
-		.await
-		.unwrap();
 
 	let routes = Router::new()
 		.route("/", get(|| async { "hello world" }))
