@@ -10,10 +10,13 @@ use mockall::predicate;
 // for `collect`
 use sqlx::PgPool;
 use tower::ServiceExt; // for `call`, `oneshot`, and `ready`
-use youtube_summarizer_server::web::{
-	routes::routes,
-	services::{transcript::get_transcript_by_url, youtube::MockYtServiceTrait},
-	utils::YTUrl,
+use youtube_summarizer_server::{
+	error::ErrorMessage,
+	web::{
+		routes::routes,
+		services::{transcript::get_transcript_by_url, youtube::MockYtServiceTrait},
+		utils::YTUrl,
+	},
 };
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -91,18 +94,45 @@ async fn invalid_url(pool: PgPool) -> Result<()> {
 		.oneshot(
 			Request::builder()
 				.uri(format!("/transcript?url={invalid_url}"))
-				.body(Body::empty())
-				.unwrap(),
+				.body(Body::empty())?,
 		)
-		.await
-		.unwrap();
+		.await?;
 
 	assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
 	let body = body_to_string(response).await?;
 
-	assert!(body.contains("Invalid URL"));
-	assert!(body.contains(invalid_url));
+	let ErrorMessage { error, message } = serde_json::from_str::<ErrorMessage>(&body)?;
+
+	assert!(message.contains("Invalid URL"));
+	assert!(message.contains(invalid_url));
+	assert!(error);
+
+	Ok(())
+}
+
+#[sqlx::test]
+async fn unsupported_url(pool: PgPool) -> Result<()> {
+	let invalid_url = "https://www.rustisamust.com/watch";
+	let routes = routes(pool);
+
+	let response = routes
+		.oneshot(
+			Request::builder()
+				.uri(format!("/transcript?url={invalid_url}"))
+				.body(Body::empty())?,
+		)
+		.await?;
+
+	assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+	let body = body_to_string(response).await?;
+
+	let ErrorMessage { error, message } = serde_json::from_str::<ErrorMessage>(&body)?;
+
+	assert!(message.contains("Unsupported URL"));
+	assert!(message.contains(invalid_url));
+	assert!(error);
 
 	Ok(())
 }
