@@ -24,6 +24,3 @@ lint:
 
 sqlx:
     cargo sqlx prepare 
-
-test-all:
-    cargo test --features "test_db" 

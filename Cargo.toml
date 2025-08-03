@@ -25,9 +25,6 @@ url = "2.5.4"
 anyhow = "1.0.98"
 httpc-test = "0.1.1"
 
-[features]
-test_db = []
-
 [lints.rust]
 # deny
 macro_use_extern_crate = "deny"
