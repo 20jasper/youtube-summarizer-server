@@ -53,8 +53,12 @@
         output.innerHTML = `<p>Loading summary for <a href=${link}>${link}</a>...</p><p>It may take a 30-60 seconds if uncached</p>`;
         fetch(`/summary?url=${link}`)
           .then((response) => response.json())
-          .then(({ summary }) => {
-            console.log({ summary });
+          .then(({ summary, error, message }) => {
+            console.log({ summary, error, message });
+            if (error) {
+              output.innerHTML = `<p>Error: ${message}</p>`;
+              return;
+            }
             output.innerHTML = marked.parse(summary);
           })
           .catch((error) => {
