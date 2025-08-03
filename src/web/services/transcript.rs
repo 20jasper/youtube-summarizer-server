@@ -154,6 +154,7 @@ realizing<00:00:07.359><c> you</c><00:00:07.520><c> forgot</c><00:00:07.839><c> 
 	}
 
 	#[sqlx::test]
+	#[cfg_attr(not(feature = "test_db"), ignore = "DB doesn't work in CI right now")]
 	async fn should_get_and_cache_transcript(pool: PgPool) -> Result<()> {
 		let url = YTUrl::try_from(
 			"https://www.youtube.com/watch?v=DjcC6p_8fpE&pp=ygUWamFjb2IgYXNwZXIgdHlwZXNjcmlwdA%3D%3D",
