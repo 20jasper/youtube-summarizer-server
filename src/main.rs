@@ -3,7 +3,7 @@ use core::net::{Ipv4Addr, SocketAddr};
 use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
 use tokio::net::TcpListener;
 use tracing::{Level, event};
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{EnvFilter, Layer};
 use youtube_summarizer_server::web::services::env::load_env;
 
 use crate::web::routes::routes;
@@ -13,17 +13,22 @@ pub mod prompts;
 pub mod web;
 
 fn init_tracing() {
-	tracing_subscriber::fmt()
-		.with_env_filter(
-			EnvFilter::try_from_default_env()
-				.or_else(|_| {
-					EnvFilter::try_new(
-						"youtube_summarizer_server=trace,tower_http=debug,reqwest=trace",
-					)
-				})
-				.unwrap(),
-		)
-		.init();
+	use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
+
+	let axiom_layer = tracing_axiom::default("youtube-summarizer").unwrap();
+	let fmt_layer = tracing_subscriber::fmt::layer().with_filter(
+		EnvFilter::try_from_default_env()
+			.or_else(|_| {
+				EnvFilter::try_new("youtube_summarizer_server=trace,tower_http=debug,reqwest=trace")
+			})
+			.unwrap(),
+	);
+
+	tracing_subscriber::registry()
+		.with(fmt_layer)
+		.with(axiom_layer)
+		.try_init()
+		.unwrap();
 }
 
 async fn init_db() -> Result<Pool<Postgres>, sqlx::Error> {
