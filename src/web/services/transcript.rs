@@ -1,7 +1,7 @@
 use crate::error::Result;
 use crate::prompts::ARTICLE_TEMPLATE;
 use crate::web::clients::CompletionClient;
-use crate::web::services::youtube::YtService;
+use crate::web::services::youtube::{YtService, YtServiceTrait};
 use crate::web::utils::YTUrl;
 use core::str;
 use core::time::Duration;
@@ -10,22 +10,23 @@ use sqlx::PgPool;
 use std::borrow::Cow;
 use tokio::time::timeout;
 
-pub async fn get_transcript_by_url(url: &YTUrl, pool: &PgPool) -> Result<String> {
+pub async fn get_transcript_by_url(
+	url: &YTUrl,
+	pool: &PgPool,
+	yt_service: impl YtServiceTrait + Send + Sync + 'static,
+) -> Result<String> {
 	let transcript = if let Ok(row) =
 		sqlx::query!("SELECT subtitles FROM videos WHERE video_id = $1", url.id())
 			.fetch_one(pool)
 			.await
 	{
 		tracing::debug!("found transcript in database");
-		clean_vtt(&row.subtitles)
+		row.subtitles
 	} else {
 		let owned_url = url.to_owned();
 		let transcript = timeout(
 			Duration::from_secs(30),
-			tokio::spawn(async move {
-				let client = YtService::from_env()?;
-				client.fetch_captions(&owned_url)
-			}),
+			tokio::spawn(async move { yt_service.fetch_captions(&owned_url) }),
 		)
 		.await???;
 		let transcript = clean_vtt(transcript.as_str());
@@ -62,7 +63,10 @@ pub async fn summarize_by_url(url: &YTUrl, pool: &PgPool) -> Result<String> {
 			.expect("Summary should not be null")
 	} else {
 		let summary = CompletionClient::from_env()?
-			.post(ARTICLE_TEMPLATE, &get_transcript_by_url(url, pool).await?)
+			.post(
+				ARTICLE_TEMPLATE,
+				&get_transcript_by_url(url, pool, YtService::from_env()?).await?,
+			)
 			.await?;
 		tracing::debug!("summarized transcript");
 
@@ -107,11 +111,14 @@ pub fn clean_vtt(transcript: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+	use anyhow::Result;
+	use mockall::predicate;
+
+	use crate::web::services::youtube::MockYtServiceTrait;
+
 	use super::*;
 
-	#[test]
-	fn should_convert_vtt_to_text() {
-		let vtt = "WEBVTT
+	const VTT: &str =  "WEBVTT
 Kind: captions
 Language: en
 00:00:00.580 --> 00:00:01.910 align:start position:0%
@@ -138,9 +145,39 @@ an entire video for 30 minutes and then
 an entire video for 30 minutes and then
 realizing<00:00:07.359><c> you</c><00:00:07.520><c> forgot</c><00:00:07.839><c> to</c><00:00:08.080><c> plug</c><00:00:08.280><c> in</c><00:00:08.440><c> your</c>";
 
-		assert_eq!(
-			clean_vtt(vtt),
-			"[Music] you know what's really not fun recording an entire video for 30 minutes and then"
-		);
+	const CLEAN_VTT: &str =
+		"[Music] you know what's really not fun recording an entire video for 30 minutes and then";
+
+	#[test]
+	fn should_convert_vtt_to_text() {
+		assert_eq!(clean_vtt(VTT), CLEAN_VTT);
+	}
+
+	#[sqlx::test]
+	async fn should_get_and_cache_transcript(pool: PgPool) -> Result<()> {
+		let url = YTUrl::try_from(
+			"https://www.youtube.com/watch?v=DjcC6p_8fpE&pp=ygUWamFjb2IgYXNwZXIgdHlwZXNjcmlwdA%3D%3D",
+		)?;
+
+		let mut yt_service = MockYtServiceTrait::new();
+		yt_service
+			.expect_fetch_captions()
+			.with(predicate::eq(url.clone()))
+			.times(1)
+			.returning(|_url| Ok(VTT.to_owned()));
+
+		let transcript = get_transcript_by_url(&url, &pool, yt_service).await?;
+		assert_eq!(transcript, CLEAN_VTT);
+
+		// should be stored in DB
+		let mut yt_service = MockYtServiceTrait::new();
+		yt_service
+			.expect_fetch_captions()
+			.times(0);
+
+		let transcript = get_transcript_by_url(&url, &pool, yt_service).await?;
+		assert_eq!(transcript, CLEAN_VTT);
+
+		Ok(())
 	}
 }

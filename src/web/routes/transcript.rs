@@ -1,5 +1,6 @@
 use crate::error::Result;
 use crate::web::services::transcript;
+use crate::web::services::youtube::YtService;
 use axum::extract::State;
 use axum::{Json, Router, extract::Query, http::StatusCode, routing::get};
 use axum_macros::debug_handler;
@@ -16,11 +17,14 @@ async fn transcript(
 	Query(TranscriptParams { url }): Query<TranscriptParams>,
 	State(pool): State<PgPool>,
 ) -> Result<(StatusCode, Json<Value>)> {
+	let transcript =
+		transcript::get_transcript_by_url(&url.as_str().try_into()?, &pool, YtService::from_env()?)
+			.await?;
 	Ok((
 		StatusCode::OK,
 		Json(json!(
 				{
-					"transcript": transcript::get_transcript_by_url(&url.as_str().try_into()?, &pool).await?
+					"transcript": transcript
 				}
 		)),
 	))
