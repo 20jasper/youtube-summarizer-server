@@ -17,7 +17,7 @@ pub async fn get_transcript_by_url(url: &YTUrl, pool: &PgPool) -> Result<String>
 			.await
 	{
 		tracing::debug!("found transcript in database");
-		row.subtitles
+		clean_vtt(&row.subtitles)
 	} else {
 		let owned_url = url.to_owned();
 		let transcript = timeout(
@@ -28,6 +28,7 @@ pub async fn get_transcript_by_url(url: &YTUrl, pool: &PgPool) -> Result<String>
 			}),
 		)
 		.await???;
+		let transcript = clean_vtt(transcript.as_str());
 		tracing::debug!("fetched transcript");
 
 		sqlx::query!(
@@ -41,7 +42,7 @@ pub async fn get_transcript_by_url(url: &YTUrl, pool: &PgPool) -> Result<String>
 		transcript
 	};
 
-	Ok(clean_vtt(&transcript))
+	Ok(transcript)
 }
 
 pub async fn summarize_by_url(url: &YTUrl, pool: &PgPool) -> Result<String> {
