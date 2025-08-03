@@ -98,6 +98,15 @@ pub mod yt_url {
 		}
 
 		#[test]
+		fn v_param_later() -> Result<()> {
+			let url = "https://www.youtube.com/watch?t=998s&v=G-aXK-iOpnA";
+
+			YTUrl::try_from(url)?;
+
+			Ok(())
+		}
+
+		#[test]
 		fn invalid_host() {
 			let invalid_url = "https://lasagna.com/watch?v=DjcC6p_8fpE";
 			YTUrl::try_from(invalid_url).unwrap_err();
