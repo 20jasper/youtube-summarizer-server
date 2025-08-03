@@ -20,6 +20,7 @@ tokio = { version = "1.35.1", features = ["full", "time", "rt"] }
 tower = "0.5.2"
 tower-http = { version = "0.6.6", features = ["fs", "trace"] }
 tracing = "0.1.41"
+tracing-axiom = "0.7.0"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 url = "2.5.4"
 
