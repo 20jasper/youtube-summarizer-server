@@ -1,3 +1,5 @@
+use core::fmt::{self, Display, Formatter};
+
 use crate::web::utils::YTUrl;
 use axum::response::IntoResponse;
 use derive_more::From;
@@ -70,3 +72,11 @@ impl IntoResponse for Error {
 		}
 	}
 }
+
+impl Display for Error {
+	fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
+		write!(formatter, "{self:?}")
+	}
+}
+
+impl std::error::Error for Error {}

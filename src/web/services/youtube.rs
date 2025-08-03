@@ -4,7 +4,13 @@ use crate::{
 	error::{Error, Result},
 	web::services::env::load_env,
 };
+use mockall::automock;
 use reqwest::Url;
+
+#[automock]
+pub trait YtServiceTrait {
+	fn fetch_captions(&self, url: &YTUrl) -> Result<String>;
+}
 
 pub struct YtService {
 	retries: u8,
@@ -12,6 +18,10 @@ pub struct YtService {
 }
 
 impl YtService {
+	pub fn new(retries: u8, proxy: Url) -> Self {
+		Self { retries, proxy }
+	}
+
 	pub fn from_env() -> Result<Self> {
 		const YOUTUBE_PROXY: &str = "YOUTUBE_PROXY";
 		const YOUTUBE_RETRIES: &str = "YOUTUBE_RETRIES";
@@ -24,10 +34,12 @@ impl YtService {
 			.and_then(|s| s.parse::<u8>().ok())
 			.unwrap_or(3);
 
-		Ok(Self { retries, proxy })
+		Ok(Self::new(retries, proxy))
 	}
+}
 
-	pub fn fetch_captions(&self, url: &YTUrl) -> Result<String> {
+impl YtServiceTrait for YtService {
+	fn fetch_captions(&self, url: &YTUrl) -> Result<String> {
 		YtdlpClientBuilder::default()
 			.proxy(self.proxy.clone())
 			.retries(self.retries)
