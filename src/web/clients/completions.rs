@@ -84,12 +84,15 @@ impl CompletionClient {
 
 		load_env()?;
 
-		let api_key = env::var(OPEN_AI_API_KEY).map_err(|_| Error::EnvMissing(OPEN_AI_API_KEY))?;
-		let model = env::var(OPEN_AI_MODEL).map_err(|_| Error::EnvMissing(OPEN_AI_MODEL))?;
+		let api_key =
+			env::var(OPEN_AI_API_KEY).map_err(|_| Error::EnvMissingOrInvalid(OPEN_AI_API_KEY))?;
+		let model =
+			env::var(OPEN_AI_MODEL).map_err(|_| Error::EnvMissingOrInvalid(OPEN_AI_MODEL))?;
 		let url = env::var(OPEN_AI_BASE_URL)
-			.map_err(|_| Error::EnvMissing(OPEN_AI_BASE_URL))?
+			.map_err(|_| Error::EnvMissingOrInvalid(OPEN_AI_BASE_URL))?
 			.parse::<Url>()
-			.and_then(|x| x.join(COMPLETIONS_PATH))?;
+			.and_then(|x| x.join(COMPLETIONS_PATH))
+			.map_err(|_| Error::EnvMissingOrInvalid(OPEN_AI_BASE_URL))?;
 
 		Ok(Self {
 			model,

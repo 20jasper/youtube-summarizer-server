@@ -27,8 +27,9 @@ impl YtService {
 		const YOUTUBE_RETRIES: &str = "YOUTUBE_RETRIES";
 		load_env()?;
 
-		let proxy = std::env::var(YOUTUBE_PROXY).map_err(|_| Error::EnvMissing(YOUTUBE_PROXY))?;
-		let proxy = Url::parse(&proxy)?;
+		let proxy =
+			std::env::var(YOUTUBE_PROXY).map_err(|_| Error::EnvMissingOrInvalid(YOUTUBE_PROXY))?;
+		let proxy = Url::parse(&proxy).map_err(|_| Error::EnvMissingOrInvalid(YOUTUBE_PROXY))?;
 		let retries = std::env::var(YOUTUBE_RETRIES)
 			.ok()
 			.and_then(|s| s.parse::<u8>().ok())
