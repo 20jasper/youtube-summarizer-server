@@ -1,18 +1,20 @@
 use crate::error::Result;
 use crate::web::services::transcript;
 use crate::web::services::youtube::YtService;
+use crate::web::utils::YTUrl;
 use axum::extract::State;
 use axum::{Json, Router, extract::Query, http::StatusCode, routing::get};
-use axum_macros::debug_handler;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use sqlx::PgPool;
+use tracing::instrument;
 
 #[derive(Deserialize)]
 struct TranscriptParams {
 	url: String,
 }
 
+#[instrument(skip(pool), fields(url, video_id = ?YTUrl::try_from(url.as_str())?.id()))]
 async fn transcript(
 	Query(TranscriptParams { url }): Query<TranscriptParams>,
 	State(pool): State<PgPool>,
@@ -34,7 +36,7 @@ async fn transcript(
 struct SummaryParams {
 	url: String,
 }
-#[debug_handler]
+#[instrument(skip(pool), fields(url, video_id = ?YTUrl::try_from(url.as_str())?.id()))]
 async fn summarize(
 	Query(SummaryParams { url }): Query<SummaryParams>,
 	State(pool): State<PgPool>,
