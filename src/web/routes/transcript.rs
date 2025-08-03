@@ -14,7 +14,7 @@ struct TranscriptParams {
 	url: String,
 }
 
-#[instrument(skip(pool), fields(url, video_id = ?YTUrl::try_from(url.as_str())?.id()))]
+#[instrument(skip(pool), fields(url, video_id = %YTUrl::try_from(url.as_str())?.id()))]
 async fn transcript(
 	Query(TranscriptParams { url }): Query<TranscriptParams>,
 	State(pool): State<PgPool>,
@@ -36,7 +36,7 @@ async fn transcript(
 struct SummaryParams {
 	url: String,
 }
-#[instrument(skip(pool), fields(url, video_id = ?YTUrl::try_from(url.as_str())?.id()))]
+#[instrument(skip(pool), fields(url, video_id = %YTUrl::try_from(url.as_str())?.id()))]
 async fn summarize(
 	Query(SummaryParams { url }): Query<SummaryParams>,
 	State(pool): State<PgPool>,
