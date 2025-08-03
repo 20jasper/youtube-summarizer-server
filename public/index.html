@@ -41,8 +41,10 @@
 
       form.addEventListener("submit", (event) => {
         event.preventDefault();
+        const link = event.target.link.value.trim();
+        const encoded = encodeURIComponent(link);
         console.log("form submitted", event.target.link.value);
-        window.location.search = `?${PARAM}=${event.target.link.value}`;
+        window.location.search = `?${PARAM}=${encoded}`;
       });
 
       const link = new URLSearchParams(window.location.search).get(PARAM);
