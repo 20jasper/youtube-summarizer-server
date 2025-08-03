@@ -1,13 +1,12 @@
-use axum::{Router, routing::get, serve};
+use axum::serve;
 use core::net::{Ipv4Addr, SocketAddr};
 use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
-use std::env;
 use tokio::net::TcpListener;
-use tower_http::{services::ServeDir, trace::TraceLayer};
 use tracing::{Level, event};
 use tracing_subscriber::EnvFilter;
-use web::routes::transcript;
 use youtube_summarizer_server::web::services::env::load_env;
+
+use crate::web::routes::routes;
 
 pub mod error;
 pub mod prompts;
@@ -45,16 +44,7 @@ async fn main() {
 	init_tracing();
 
 	let pool = init_db().await.unwrap();
-
-	let routes = Router::new()
-		.route("/", get(|| async { "hello world" }))
-		.merge(transcript::routes())
-		// layers run from bottom to top
-		.fallback_service(ServeDir::new(
-			env::var("PUBLIC_DIR").unwrap_or("public/".into()),
-		))
-		.layer(TraceLayer::new_for_http())
-		.with_state(pool);
+	let routes = routes(pool);
 
 	let address = SocketAddr::from((Ipv4Addr::UNSPECIFIED, 8080));
 	let listener = TcpListener::bind(address)
