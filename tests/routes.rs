@@ -84,12 +84,13 @@ async fn should_get_and_cache_transcript(pool: PgPool) -> Result<()> {
 
 #[sqlx::test]
 async fn invalid_url(pool: PgPool) -> Result<()> {
+	let invalid_url = "uhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh";
 	let routes = routes(pool);
 
 	let response = routes
 		.oneshot(
 			Request::builder()
-				.uri("/transcript?url=invalid_url")
+				.uri(format!("/transcript?url={invalid_url}"))
 				.body(Body::empty())
 				.unwrap(),
 		)
@@ -100,7 +101,8 @@ async fn invalid_url(pool: PgPool) -> Result<()> {
 
 	let body = body_to_string(response).await?;
 
-	assert_eq!(body, "Invalid URL");
+	assert!(body.contains("Invalid URL"));
+	assert!(body.contains(invalid_url));
 
 	Ok(())
 }

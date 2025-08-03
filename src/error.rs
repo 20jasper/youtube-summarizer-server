@@ -1,28 +1,27 @@
 use core::fmt::{self, Display, Formatter};
 
-use crate::web::utils::YTUrl;
+use crate::web::utils::{YTUrl, yt_url};
 use axum::response::IntoResponse;
 use derive_more::From;
 use reqwest::StatusCode;
 use tokio::{task::JoinError, time::error::Elapsed};
 use tracing::{Level, event};
-use url::Url;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug, From)]
 pub enum Error {
-	EnvMissing(&'static str),
+	EnvMissingOrInvalid(&'static str),
 	#[from]
 	EnvParse(dotenvy::Error),
 
 	CaptionsUnavailable(YTUrl),
-	UnsupportedUrl(Url),
+
+	#[from]
+	YtUrl(yt_url::Error),
 
 	#[from]
 	Reqwest(reqwest::Error),
-	#[from]
-	Url(url::ParseError),
 	#[from]
 	Timeout(Elapsed),
 	#[from]
@@ -53,14 +52,11 @@ impl IntoResponse for Error {
 		use Error as E;
 		event!(Level::WARN, error=?self);
 		match self {
-			E::EnvMissing(_) | E::EnvParse(_) => {
+			E::EnvMissingOrInvalid(_) | E::EnvParse(_) => {
 				(StatusCode::SERVICE_UNAVAILABLE, "Service Unavailable").into_response()
 			}
 			E::Timeout(_) => (StatusCode::GATEWAY_TIMEOUT, "Gateway Timeout").into_response(),
-			E::Url(_) => (StatusCode::BAD_REQUEST, "Invalid URL").into_response(),
-			E::UnsupportedUrl(url) => {
-				(StatusCode::BAD_REQUEST, format!("Unsupported URL: {url}")).into_response()
-			}
+			E::YtUrl(e) => (StatusCode::BAD_REQUEST, e.to_string()).into_response(),
 			E::CaptionsUnavailable(url) => (
 				StatusCode::NOT_FOUND,
 				format!("Captions not available for URL: {}", url.as_str()),
