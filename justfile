@@ -1,6 +1,6 @@
 # build and run server on save
 dev:
-    LOAD_ENV=true cargo watch --poll -q -c -w src/ -x "run --bin youtube-summarizer-server"
+    cargo watch --poll -q -c -w src/ -x "run --bin youtube-summarizer-server --features dotenv"
 
 # build and run example query on save
 example:

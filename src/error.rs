@@ -1,7 +1,9 @@
-use core::fmt::{self, Display, Formatter};
+#[cfg(not(feature = "dotenv"))]
+use core::convert::Infallible;
 
 use crate::web::utils::{YTUrl, yt_url};
 use axum::{Json, response::IntoResponse};
+use core::fmt::{self, Display, Formatter};
 use derive_more::From;
 use reqwest::StatusCode;
 use tokio::{task::JoinError, time::error::Elapsed};
@@ -12,8 +14,13 @@ pub type Result<T> = core::result::Result<T, Error>;
 #[derive(Debug, From)]
 pub enum Error {
 	EnvMissingOrInvalid(&'static str),
+
+	#[cfg(feature = "dotenv")]
 	#[from]
 	EnvParse(dotenvy::Error),
+
+	#[cfg(not(feature = "dotenv"))]
+	EnvParse(Infallible),
 
 	CaptionsUnavailable(YTUrl),
 
