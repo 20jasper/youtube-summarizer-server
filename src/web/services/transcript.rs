@@ -108,3 +108,48 @@ fn clean_vtt(transcript: &str) -> String {
 		.collect::<Vec<_>>()
 		.join(" ")
 }
+
+/// overlapping chunks of text
+/// returns 1 chunk if `size` <= `overlap`
+fn chunk_text(s: &str, size: usize, overlap: usize) -> Vec<&str> {
+	let offset = if let Some(offset) = size.checked_sub(overlap)
+		&& offset > 0
+	{
+		offset
+	} else {
+		return vec![s];
+	};
+
+	let chunks = s
+		.len()
+		.checked_div(offset)
+		.expect("offset should never be 0");
+
+	(0..chunks)
+		.map(|i| i.saturating_mul(offset))
+		.map(|start| start..(start.saturating_add(size)))
+		.filter_map(|r| s.get(r))
+		.collect()
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use rstest::rstest;
+
+	#[rstest]
+	#[case("abcde", 2, 1, vec!["ab", "bc", "cd", "de"])]
+	#[case("abcde", 3, 1, vec!["abc", "cde"])]
+	#[case("abcde", 3, 2, vec!["abc", "bcd", "cde"])]
+	#[case("abcde", 3, 3, vec!["abcde"])]
+	#[case("abcde", 1, 3, vec!["abcde"])]
+	#[case("abcde", 1, 0, vec!["a", "b", "c", "d", "e"])]
+	fn does_range(
+		#[case] text: &str,
+		#[case] chunk: usize,
+		#[case] overlap: usize,
+		#[case] expected: Vec<&str>,
+	) {
+		assert_eq!(chunk_text(text, chunk, overlap), expected);
+	}
+}
