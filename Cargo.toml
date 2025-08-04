@@ -3,12 +3,15 @@ name = "youtube-summarizer-server"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+"dotenv" = ["dep:dotenvy"]
+
 [dependencies]
 axum = { version = "0.8.4", features = ["json"] }
 axum-macros = "0.5.0"
 derive_builder = "0.20.2"
 derive_more = { version = "2.0.1", features = ["from"] }
-dotenvy = "0.15.7"
+dotenvy = { version = "0.15.7", optional = true }
 mockall = "0.13.1"
 regex = "1.10.6"
 reqwest = { version = "0.12.7", features = ["json"] }
