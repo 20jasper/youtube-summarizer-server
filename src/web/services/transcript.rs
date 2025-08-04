@@ -109,18 +109,22 @@ fn clean_vtt(transcript: &str) -> String {
 		.join(" ")
 }
 
-/// overlapping chunks of text
+/// overlapping chunks of text by `size` words
 /// returns 1 chunk if `size` <= `overlap`
-fn chunk_text(s: &str, size: usize, overlap: usize) -> Vec<&str> {
+fn chunk_text_by_words(s: &str, size: usize, overlap: usize) -> Vec<String> {
 	let offset = if let Some(offset) = size.checked_sub(overlap)
 		&& offset > 0
 	{
 		offset
 	} else {
-		return vec![s];
+		return vec![s.into()];
 	};
 
-	let chunks = s
+	let words = s
+		.split_ascii_whitespace()
+		.collect::<Vec<_>>();
+
+	let chunks = words
 		.len()
 		.checked_div(offset)
 		.expect("offset should never be 0");
@@ -128,7 +132,7 @@ fn chunk_text(s: &str, size: usize, overlap: usize) -> Vec<&str> {
 	(0..chunks)
 		.map(|i| i.saturating_mul(offset))
 		.map(|start| start..(start.saturating_add(size)))
-		.filter_map(|r| s.get(r))
+		.filter_map(|r| Some(words.get(r)?.to_vec().join(" ")))
 		.collect()
 }
 
@@ -137,19 +141,25 @@ mod tests {
 	use super::*;
 	use rstest::rstest;
 
+	fn convert<'a>(x: impl IntoIterator<Item = &'a str>) -> Vec<String> {
+		x.into_iter()
+			.map(str::to_string)
+			.collect()
+	}
+
 	#[rstest]
-	#[case("abcde", 2, 1, vec!["ab", "bc", "cd", "de"])]
-	#[case("abcde", 3, 1, vec!["abc", "cde"])]
-	#[case("abcde", 3, 2, vec!["abc", "bcd", "cde"])]
-	#[case("abcde", 3, 3, vec!["abcde"])]
-	#[case("abcde", 1, 3, vec!["abcde"])]
-	#[case("abcde", 1, 0, vec!["a", "b", "c", "d", "e"])]
+	#[case("a b c d e", 2, 1, convert(["a b", "b c", "c d", "d e"]))]
+	#[case("a b c d e", 3, 1, convert(["a b c", "c d e"]))]
+	#[case("a b c d e", 3, 2, convert(["a b c", "b c d", "c d e"]))]
+	#[case("a b c d e", 3, 3, convert(["a b c d e"]))]
+	#[case("a b c d e", 1, 3, convert(["a b c d e"]))]
+	#[case("a b c d e", 1, 0, convert(["a", "b", "c", "d", "e"]))]
 	fn does_range(
 		#[case] text: &str,
 		#[case] chunk: usize,
 		#[case] overlap: usize,
-		#[case] expected: Vec<&str>,
+		#[case] expected: Vec<String>,
 	) {
-		assert_eq!(chunk_text(text, chunk, overlap), expected);
+		assert_eq!(chunk_text_by_words(text, chunk, overlap), expected);
 	}
 }
