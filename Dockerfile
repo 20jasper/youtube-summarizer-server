@@ -19,7 +19,7 @@ COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 
 COPY . .
-RUN cargo build --release --bin ${APP_NAME}
+RUN cargo build --release --bin ${APP_NAME} --features "axiom"
 
 
 FROM python:3.13-slim-bookworm AS final

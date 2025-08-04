@@ -15,7 +15,6 @@ pub mod web;
 fn init_tracing() {
 	use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
-	let axiom_layer = tracing_axiom::default("youtube-summarizer").unwrap();
 	let fmt_layer = tracing_subscriber::fmt::layer().with_filter(
 		EnvFilter::try_from_default_env()
 			.or_else(|_| {
@@ -23,12 +22,12 @@ fn init_tracing() {
 			})
 			.unwrap(),
 	);
+	let registry = tracing_subscriber::registry().with(fmt_layer);
 
-	tracing_subscriber::registry()
-		.with(fmt_layer)
-		.with(axiom_layer)
-		.try_init()
-		.unwrap();
+	#[cfg(feature = "axiom")]
+	let registry = registry.with(tracing_axiom::default("youtube-summarizer").unwrap());
+
+	registry.try_init().unwrap();
 }
 
 async fn init_db() -> Result<Pool<Postgres>, sqlx::Error> {
