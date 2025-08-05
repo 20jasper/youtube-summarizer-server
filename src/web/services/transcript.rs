@@ -70,7 +70,7 @@ pub async fn summarize_by_url(url: &YTUrl, pool: &PgPool) -> Result<String> {
 		// let oneshot_summary = single_chunk_summary(&transcript).await?;
 		// tracing::debug!("oneshot summary {}", oneshot_summary);
 
-		let chunked_summary = multi_chunk_summary(&transcript, 15_000, 1000).await?;
+		let chunked_summary = multi_chunk_summary(&transcript, 10_000, 100).await?;
 		// tracing::debug!("multichunk summary {}", chunked_summary);
 
 		tracing::debug!("summarized transcript");
@@ -97,9 +97,16 @@ async fn single_chunk_summary(transcript: &str) -> Result<String> {
 		.await
 }
 async fn multi_chunk_summary(transcript: &str, size: usize, overlap: usize) -> Result<String> {
-	// TODO if one chunk use oneshot
 	let chunks = chunk_text_by_words(transcript, size, overlap);
 	let len = chunks.len();
+
+	tracing::debug!("{len} chunks");
+
+	if len == 1 {
+		tracing::debug!("using oneshot prompt");
+		return single_chunk_summary(transcript).await;
+	}
+	tracing::debug!("using chunked prompts");
 
 	let summarize_chunk = async |x: String| {
 		CompletionClient::from_env()?
