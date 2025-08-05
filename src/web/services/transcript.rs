@@ -3,7 +3,7 @@ use crate::prompts::{
 	CHUNKED_COMBINE_TEMPLATE, CHUNKED_SUMMARY_TEMPLATE, ONESHOT_SUMMARY_TEMPLATE,
 };
 use crate::web::clients::{CompletionClient, DeepInfraClient};
-use crate::web::services::youtube::YtServiceTrait;
+use crate::web::services::youtube::YtService;
 use crate::web::utils::YTUrl;
 use core::time::Duration;
 use regex::Regex;
@@ -15,7 +15,7 @@ use tokio::time::timeout;
 pub async fn get_transcript_by_url(
 	url: &YTUrl,
 	pool: &PgPool,
-	yt_service: impl YtServiceTrait + Send + Sync + 'static,
+	yt_service: impl YtService + Send + Sync + 'static,
 ) -> Result<String> {
 	let transcript = if let Ok(row) =
 		sqlx::query!("SELECT subtitles FROM videos WHERE video_id = $1", url.id())
@@ -51,7 +51,7 @@ pub async fn get_transcript_by_url(
 pub async fn summarize_by_url(
 	url: &YTUrl,
 	pool: &PgPool,
-	yt_service: impl YtServiceTrait + Send + Sync + 'static,
+	yt_service: impl YtService + Send + Sync + 'static,
 	client: &DeepInfraClient,
 ) -> Result<String> {
 	let summary = if let Ok(row) = sqlx::query!(

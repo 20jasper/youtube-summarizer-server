@@ -14,7 +14,7 @@ use youtube_summarizer_server::{
 	error::ErrorMessage,
 	web::{
 		routes::routes,
-		services::{transcript::get_transcript_by_url, youtube::MockYtServiceTrait},
+		services::{transcript::get_transcript_by_url, youtube::MockYtService},
 		utils::YTUrl,
 	},
 };
@@ -63,7 +63,7 @@ async fn should_get_and_cache_transcript(pool: PgPool) -> Result<()> {
 		"https://www.youtube.com/watch?v=DjcC6p_8fpE&pp=ygUWamFjb2IgYXNwZXIgdHlwZXNjcmlwdA%3D%3D",
 	)?;
 
-	let mut yt_service = MockYtServiceTrait::new();
+	let mut yt_service = MockYtService::new();
 	yt_service
 		.expect_fetch_captions()
 		.with(predicate::eq(url.clone()))
@@ -74,7 +74,7 @@ async fn should_get_and_cache_transcript(pool: PgPool) -> Result<()> {
 	assert_eq!(transcript, CLEAN_VTT);
 
 	// should be stored in DB
-	let mut yt_service = MockYtServiceTrait::new();
+	let mut yt_service = MockYtService::new();
 	yt_service
 		.expect_fetch_captions()
 		.times(0);

@@ -8,16 +8,16 @@ use mockall::automock;
 use reqwest::Url;
 
 #[automock]
-pub trait YtServiceTrait {
+pub trait YtService {
 	fn fetch_captions(&self, url: &YTUrl) -> Result<String>;
 }
 
-pub struct YtService {
+pub struct YtDlpService {
 	retries: u8,
 	proxy: Url,
 }
 
-impl YtService {
+impl YtDlpService {
 	pub fn new(retries: u8, proxy: Url) -> Self {
 		Self { retries, proxy }
 	}
@@ -39,7 +39,7 @@ impl YtService {
 	}
 }
 
-impl YtServiceTrait for YtService {
+impl YtService for YtDlpService {
 	fn fetch_captions(&self, url: &YTUrl) -> Result<String> {
 		YtdlpClientBuilder::default()
 			.proxy(self.proxy.clone())
