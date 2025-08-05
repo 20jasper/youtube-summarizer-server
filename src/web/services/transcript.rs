@@ -173,6 +173,10 @@ fn chunk_text_by_words(s: &str, size: usize, overlap: usize) -> Vec<String> {
 		.split_ascii_whitespace()
 		.collect::<Vec<_>>();
 
+	if words.len() <= size {
+		return vec![s.into()];
+	}
+
 	let chunks = words
 		.len()
 		.checked_div(offset)
@@ -203,6 +207,7 @@ mod tests {
 	#[case("a b c d e", 3, 3, convert(["a b c d e"]))]
 	#[case("a b c d e", 1, 3, convert(["a b c d e"]))]
 	#[case("a b c d e", 1, 0, convert(["a", "b", "c", "d", "e"]))]
+	#[case("a b c d e", 10, 0, convert(["a b c d e"]))]
 	fn does_range(
 		#[case] text: &str,
 		#[case] chunk: usize,
