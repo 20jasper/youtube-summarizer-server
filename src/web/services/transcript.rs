@@ -67,15 +67,9 @@ pub async fn summarize_by_url(url: &YTUrl, pool: &PgPool) -> Result<String> {
 		let transcript = get_transcript_by_url(url, pool, YtService::from_env()?).await?;
 		tracing::debug!("transcript len: {}", transcript.len());
 
-		// let oneshot_summary = single_chunk_summary(&transcript).await?;
-		// tracing::debug!("oneshot summary {}", oneshot_summary);
-
-		let chunked_summary = multi_chunk_summary(&transcript, 10_000, 100).await?;
-		// tracing::debug!("multichunk summary {}", chunked_summary);
+		let summary = multi_chunk_summary(&transcript, 10_000, 100).await?;
 
 		tracing::debug!("summarized transcript");
-
-		let summary = chunked_summary;
 
 		sqlx::query!(
 			"UPDATE videos SET summary = $1 WHERE video_id = $2",
