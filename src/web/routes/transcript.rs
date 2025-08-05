@@ -1,4 +1,5 @@
 use crate::error::Result;
+use crate::web::clients::CompletionClient;
 use crate::web::services::transcript;
 use crate::web::services::youtube::YtService;
 use crate::web::utils::YTUrl;
@@ -41,11 +42,18 @@ async fn summarize(
 	Query(SummaryParams { url }): Query<SummaryParams>,
 	State(pool): State<PgPool>,
 ) -> Result<(StatusCode, Json<Value>)> {
+	let summary = transcript::summarize_by_url(
+		&url.as_str().try_into()?,
+		&pool,
+		YtService::from_env()?,
+		&CompletionClient::from_env()?,
+	)
+	.await?;
 	Ok((
 		StatusCode::OK,
 		Json(json!(
 				{
-					"summary": transcript::summarize_by_url(&url.as_str().try_into()?, &pool, YtService::from_env()?).await?,
+					"summary": summary
 				}
 		)),
 	))

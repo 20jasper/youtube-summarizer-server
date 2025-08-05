@@ -52,6 +52,7 @@ pub async fn summarize_by_url(
 	url: &YTUrl,
 	pool: &PgPool,
 	yt_service: impl YtServiceTrait + Send + Sync + 'static,
+	client: &CompletionClient,
 ) -> Result<String> {
 	let summary = if let Ok(row) = sqlx::query!(
 		r"
@@ -71,7 +72,7 @@ pub async fn summarize_by_url(
 		let transcript = get_transcript_by_url(url, pool, yt_service).await?;
 		tracing::debug!("transcript len: {}", transcript.len());
 
-		let summary = multi_chunk_summary(&transcript, 10_000, 100).await?;
+		let summary = multi_chunk_summary(client, &transcript, 10_000, 100).await?;
 
 		tracing::debug!("summarized transcript");
 
@@ -89,12 +90,17 @@ pub async fn summarize_by_url(
 	Ok(summary)
 }
 
-async fn single_chunk_summary(transcript: &str) -> Result<String> {
-	CompletionClient::from_env()?
+async fn single_chunk_summary(client: &CompletionClient, transcript: &str) -> Result<String> {
+	client
 		.post(ONESHOT_SUMMARY_TEMPLATE, transcript)
 		.await
 }
-async fn multi_chunk_summary(transcript: &str, size: usize, overlap: usize) -> Result<String> {
+async fn multi_chunk_summary(
+	client: &CompletionClient,
+	transcript: &str,
+	size: usize,
+	overlap: usize,
+) -> Result<String> {
 	let chunks = chunk_text_by_words(transcript, size, overlap);
 	let len = chunks.len();
 
@@ -102,12 +108,13 @@ async fn multi_chunk_summary(transcript: &str, size: usize, overlap: usize) -> R
 
 	if len == 1 {
 		tracing::debug!("using oneshot prompt");
-		return single_chunk_summary(transcript).await;
+		return single_chunk_summary(client, transcript).await;
 	}
 	tracing::debug!("using chunked prompts");
 
-	let summarize_chunk = async |x: String| {
-		CompletionClient::from_env()?
+	let summarize_chunk = async |client: CompletionClient, x: String| {
+		client
+			.clone()
 			.post(CHUNKED_SUMMARY_TEMPLATE, &x)
 			.await
 	};
@@ -128,7 +135,7 @@ async fn multi_chunk_summary(transcript: &str, size: usize, overlap: usize) -> R
 
 	let summaries = chunks
 		.into_iter()
-		.map(summarize_chunk)
+		.map(|x| summarize_chunk(client.clone(), x))
 		.collect::<JoinSet<_>>()
 		.join_all()
 		.await
