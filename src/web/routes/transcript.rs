@@ -1,5 +1,5 @@
 use crate::error::Result;
-use crate::web::clients::CompletionClient;
+use crate::web::clients::DeepInfraClient;
 use crate::web::services::transcript;
 use crate::web::services::youtube::YtService;
 use crate::web::utils::YTUrl;
@@ -46,7 +46,7 @@ async fn summarize(
 		&url.as_str().try_into()?,
 		&pool,
 		YtService::from_env()?,
-		&CompletionClient::from_env()?,
+		&DeepInfraClient::from_env()?,
 	)
 	.await?;
 	Ok((

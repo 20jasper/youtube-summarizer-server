@@ -70,18 +70,18 @@ impl CompletionRequestBuilder {
 }
 
 #[automock]
-pub trait CompletionClientTrait {
+pub trait CompletionClient {
 	fn post(&self, prompt: &str, text: &str) -> impl Future<Output = Result<String>> + Send;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CompletionClient {
+pub struct DeepInfraClient {
 	model: String,
 	url: Url,
 	api_key: String,
 }
 
-impl CompletionClient {
+impl DeepInfraClient {
 	pub fn build(model: String, base_url: &Url, api_key: String) -> Result<Self> {
 		const COMPLETIONS_PATH: &str = "chat/completions";
 		Ok(Self {
@@ -114,11 +114,11 @@ impl CompletionClient {
 			.parse::<Url>()
 			.map_err(|_| Error::EnvMissingOrInvalid(OPEN_AI_BASE_URL))?;
 
-		CompletionClient::build(model, &url, api_key)
+		DeepInfraClient::build(model, &url, api_key)
 	}
 }
 
-impl CompletionClientTrait for CompletionClient {
+impl CompletionClient for DeepInfraClient {
 	async fn post(&self, prompt: &str, text: &str) -> Result<String> {
 		let payload = CompletionRequestBuilder::default()
 			.model(&self.model)

@@ -2,7 +2,7 @@ use crate::error::Result;
 use crate::prompts::{
 	CHUNKED_COMBINE_TEMPLATE, CHUNKED_SUMMARY_TEMPLATE, ONESHOT_SUMMARY_TEMPLATE,
 };
-use crate::web::clients::{CompletionClient, CompletionClientTrait};
+use crate::web::clients::{CompletionClient, DeepInfraClient};
 use crate::web::services::youtube::YtServiceTrait;
 use crate::web::utils::YTUrl;
 use core::time::Duration;
@@ -52,7 +52,7 @@ pub async fn summarize_by_url(
 	url: &YTUrl,
 	pool: &PgPool,
 	yt_service: impl YtServiceTrait + Send + Sync + 'static,
-	client: &CompletionClient,
+	client: &DeepInfraClient,
 ) -> Result<String> {
 	let summary = if let Ok(row) = sqlx::query!(
 		r"
@@ -90,23 +90,20 @@ pub async fn summarize_by_url(
 	Ok(summary)
 }
 
-async fn single_chunk_summary(
-	client: &impl CompletionClientTrait,
-	transcript: &str,
-) -> Result<String> {
+async fn single_chunk_summary(client: &impl CompletionClient, transcript: &str) -> Result<String> {
 	client
 		.post(ONESHOT_SUMMARY_TEMPLATE, transcript)
 		.await
 }
 
-async fn summarize_chunk(client: impl CompletionClientTrait, chunk: String) -> Result<String> {
+async fn summarize_chunk(client: impl CompletionClient, chunk: String) -> Result<String> {
 	client
 		.post(CHUNKED_SUMMARY_TEMPLATE, &chunk)
 		.await
 }
 
 async fn multi_chunk_summary(
-	client: &(impl CompletionClientTrait + Clone + Send + Sync + 'static),
+	client: &(impl CompletionClient + Clone + Send + Sync + 'static),
 	transcript: &str,
 	size: usize,
 	overlap: usize,
