@@ -10,12 +10,20 @@
 # Title
 brief overview
 
-## point 1
+## Themes
+
+- theme 1
+- theme 2
+- theme 3
+
+## Main Theme
 
 1 - 2 paragraph description with many details about the topic
 
-## point 2
+## Main Theme
 
 1 - 2 paragraph description with many details about the topic
+
+## Summary
 
 </example>
