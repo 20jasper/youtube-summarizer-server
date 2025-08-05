@@ -72,7 +72,7 @@ pub async fn summarize_by_url(
 		let transcript = get_transcript_by_url(url, pool, yt_service).await?;
 		tracing::debug!("transcript len: {}", transcript.len());
 
-		let summary = multi_chunk_summary(client, &transcript, 10_000, 100).await?;
+		let summary = summary(client, &transcript, 10_000, 100).await?;
 
 		tracing::debug!("summarized transcript");
 
@@ -90,19 +90,19 @@ pub async fn summarize_by_url(
 	Ok(summary)
 }
 
-async fn single_chunk_summary(client: &impl CompletionClient, transcript: &str) -> Result<String> {
+async fn oneshot_summary(client: &impl CompletionClient, transcript: &str) -> Result<String> {
 	client
 		.post(ONESHOT_SUMMARY_TEMPLATE, transcript)
 		.await
 }
 
-async fn summarize_chunk(client: impl CompletionClient, chunk: String) -> Result<String> {
+async fn chunk_summary(client: impl CompletionClient, chunk: String) -> Result<String> {
 	client
 		.post(CHUNKED_SUMMARY_TEMPLATE, &chunk)
 		.await
 }
 
-async fn multi_chunk_summary(
+async fn summary(
 	client: &(impl CompletionClient + Clone + Send + Sync + 'static),
 	transcript: &str,
 	size: usize,
@@ -115,35 +115,40 @@ async fn multi_chunk_summary(
 
 	if len == 1 {
 		tracing::debug!("using oneshot prompt");
-		return single_chunk_summary(client, transcript).await;
+		return oneshot_summary(client, transcript).await;
 	}
 	tracing::debug!("using chunked prompts");
 
-	let combine_chunks = async |x: Vec<String>| {
-		let combined = x
-			.iter()
-			.enumerate()
-			.map(|(i, summary)| format!("chunk {}/{}\n{summary}", i + 1, len))
-			.collect::<Vec<_>>()
-			.join("\n");
+	multi_chunk_summary(client, chunks).await
+}
 
-		tracing::debug!(combined);
-
-		client
-			.post(CHUNKED_COMBINE_TEMPLATE, &combined)
-			.await
-	};
+async fn multi_chunk_summary(
+	client: &(impl CompletionClient + Clone + Send + Sync + 'static),
+	chunks: Vec<String>,
+) -> Result<String> {
+	let len = chunks.len();
 
 	let summaries = chunks
 		.into_iter()
-		.map(|x| summarize_chunk(client.clone(), x))
+		.map(|x| chunk_summary(client.clone(), x))
 		.collect::<JoinSet<_>>()
 		.join_all()
 		.await
 		.into_iter()
 		.collect::<Result<Vec<String>>>()?;
 
-	combine_chunks(summaries).await
+	let combined = summaries
+		.iter()
+		.enumerate()
+		.map(|(i, summary)| format!("chunk {}/{}\n{summary}", i + 1, len))
+		.collect::<Vec<_>>()
+		.join("\n");
+
+	tracing::debug!(combined);
+
+	client
+		.post(CHUNKED_COMBINE_TEMPLATE, &combined)
+		.await
 }
 
 /// remove timestamps and duplicate lines
