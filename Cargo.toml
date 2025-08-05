@@ -67,7 +67,6 @@ negative_feature_names = "warn"
 redundant_feature_names = "warn"
 # restriction
 alloc_instead_of_core = "warn"
-arithmetic_side_effects = "warn"
 as_conversions = "warn"
 as_underscore = "warn"
 assertions_on_result_states = "warn"
