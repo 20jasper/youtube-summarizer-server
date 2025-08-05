@@ -2,7 +2,7 @@ use crate::error::Result;
 use crate::prompts::{
 	CHUNKED_COMBINE_TEMPLATE, CHUNKED_SUMMARY_TEMPLATE, ONESHOT_SUMMARY_TEMPLATE,
 };
-use crate::web::clients::CompletionClient;
+use crate::web::clients::{CompletionClient, CompletionClientTrait};
 use crate::web::services::youtube::YtServiceTrait;
 use crate::web::utils::YTUrl;
 use core::time::Duration;
@@ -90,13 +90,23 @@ pub async fn summarize_by_url(
 	Ok(summary)
 }
 
-async fn single_chunk_summary(client: &CompletionClient, transcript: &str) -> Result<String> {
+async fn single_chunk_summary(
+	client: &impl CompletionClientTrait,
+	transcript: &str,
+) -> Result<String> {
 	client
 		.post(ONESHOT_SUMMARY_TEMPLATE, transcript)
 		.await
 }
+
+async fn summarize_chunk(client: impl CompletionClientTrait, chunk: String) -> Result<String> {
+	client
+		.post(CHUNKED_SUMMARY_TEMPLATE, &chunk)
+		.await
+}
+
 async fn multi_chunk_summary(
-	client: &CompletionClient,
+	client: &(impl CompletionClientTrait + Clone + Send + Sync + 'static),
 	transcript: &str,
 	size: usize,
 	overlap: usize,
@@ -112,12 +122,6 @@ async fn multi_chunk_summary(
 	}
 	tracing::debug!("using chunked prompts");
 
-	let summarize_chunk = async |client: CompletionClient, x: String| {
-		client
-			.clone()
-			.post(CHUNKED_SUMMARY_TEMPLATE, &x)
-			.await
-	};
 	let combine_chunks = async |x: Vec<String>| {
 		let combined = x
 			.iter()
@@ -128,7 +132,7 @@ async fn multi_chunk_summary(
 
 		tracing::debug!(combined);
 
-		CompletionClient::from_env()?
+		client
 			.post(CHUNKED_COMBINE_TEMPLATE, &combined)
 			.await
 	};

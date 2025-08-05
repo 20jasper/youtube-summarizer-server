@@ -1,6 +1,7 @@
 use crate::error::{Error, Result};
 use crate::web::services::env::load_env;
 use derive_builder::Builder;
+use mockall::automock;
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -68,6 +69,11 @@ impl CompletionRequestBuilder {
 	}
 }
 
+#[automock]
+pub trait CompletionClientTrait {
+	fn post(&self, prompt: &str, text: &str) -> impl Future<Output = Result<String>> + Send;
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CompletionClient {
 	model: String,
@@ -76,11 +82,26 @@ pub struct CompletionClient {
 }
 
 impl CompletionClient {
+	pub fn build(model: String, base_url: &Url, api_key: String) -> Result<Self> {
+		const COMPLETIONS_PATH: &str = "chat/completions";
+		Ok(Self {
+			model,
+			url: base_url
+				.join(COMPLETIONS_PATH)
+				.map_err(|_| {
+					format!(
+						"could not parse completions endpoint: {}",
+						base_url.as_str()
+					)
+				})?,
+			api_key,
+		})
+	}
+
 	pub fn from_env() -> Result<Self> {
 		const OPEN_AI_API_KEY: &str = "OPEN_AI_API_KEY";
 		const OPEN_AI_MODEL: &str = "OPEN_AI_MODEL";
 		const OPEN_AI_BASE_URL: &str = "OPEN_AI_BASE_URL";
-		const COMPLETIONS_PATH: &str = "chat/completions";
 
 		load_env()?;
 
@@ -91,17 +112,14 @@ impl CompletionClient {
 		let url = env::var(OPEN_AI_BASE_URL)
 			.map_err(|_| Error::EnvMissingOrInvalid(OPEN_AI_BASE_URL))?
 			.parse::<Url>()
-			.and_then(|x| x.join(COMPLETIONS_PATH))
 			.map_err(|_| Error::EnvMissingOrInvalid(OPEN_AI_BASE_URL))?;
 
-		Ok(Self {
-			model,
-			url,
-			api_key,
-		})
+		CompletionClient::build(model, &url, api_key)
 	}
+}
 
-	pub async fn post(&self, prompt: &str, text: &str) -> Result<String> {
+impl CompletionClientTrait for CompletionClient {
+	async fn post(&self, prompt: &str, text: &str) -> Result<String> {
 		let payload = CompletionRequestBuilder::default()
 			.model(&self.model)
 			.max_tokens(700_u32)
