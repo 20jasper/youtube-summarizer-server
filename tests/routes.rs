@@ -85,15 +85,13 @@ async fn should_get_and_cache_transcript(pool: PgPool) -> Result<()> {
 	Ok(())
 }
 
-#[sqlx::test]
-async fn invalid_url(pool: PgPool) -> Result<()> {
-	let invalid_url = "uhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh";
+async fn transcript_error(pool: PgPool, url: &str, error_message: &str) -> Result<()> {
 	let routes = routes(pool);
 
 	let response = routes
 		.oneshot(
 			Request::builder()
-				.uri(format!("/transcript?url={invalid_url}"))
+				.uri(format!("/transcript?url={url}"))
 				.body(Body::empty())?,
 		)
 		.await?;
@@ -104,35 +102,23 @@ async fn invalid_url(pool: PgPool) -> Result<()> {
 
 	let ErrorMessage { error, message } = serde_json::from_str::<ErrorMessage>(&body)?;
 
-	assert!(message.contains("Invalid URL"));
-	assert!(message.contains(invalid_url));
+	assert!(message.contains(error_message));
+	assert!(message.contains(url));
 	assert!(error);
 
 	Ok(())
 }
 
 #[sqlx::test]
+async fn invalid_url(pool: PgPool) -> Result<()> {
+	let url = "uhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh";
+	let error_message = "Invalid URL";
+	transcript_error(pool, url, error_message).await
+}
+
+#[sqlx::test]
 async fn unsupported_url(pool: PgPool) -> Result<()> {
-	let invalid_url = "https://www.rustisamust.com/watch";
-	let routes = routes(pool);
-
-	let response = routes
-		.oneshot(
-			Request::builder()
-				.uri(format!("/transcript?url={invalid_url}"))
-				.body(Body::empty())?,
-		)
-		.await?;
-
-	assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-
-	let body = body_to_string(response).await?;
-
-	let ErrorMessage { error, message } = serde_json::from_str::<ErrorMessage>(&body)?;
-
-	assert!(message.contains("Unsupported URL"));
-	assert!(message.contains(invalid_url));
-	assert!(error);
-
-	Ok(())
+	let url = "https://www.rustisamust.com/watch";
+	let error_message = "Unsupported URL";
+	transcript_error(pool, url, error_message).await
 }
