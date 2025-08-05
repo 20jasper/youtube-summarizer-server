@@ -104,7 +104,7 @@ impl CompletionClient {
 	pub async fn post(&self, prompt: &str, text: &str) -> Result<String> {
 		let payload = CompletionRequestBuilder::default()
 			.model(&self.model)
-			.max_tokens(500_u32)
+			.max_tokens(700_u32)
 			.messages([
 				Message {
 					role: "system".into(),
