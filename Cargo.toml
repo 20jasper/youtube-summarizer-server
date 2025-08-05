@@ -29,6 +29,7 @@ url = "2.5.4"
 [dev-dependencies]
 http-body-util = "0.1.3"
 httpc-test = "0.1.1"
+rstest = "0.26.1"
 tower = "0.5.2"
 
 [lints.rust]
@@ -66,7 +67,6 @@ negative_feature_names = "warn"
 redundant_feature_names = "warn"
 # restriction
 alloc_instead_of_core = "warn"
-arithmetic_side_effects = "warn"
 as_conversions = "warn"
 as_underscore = "warn"
 assertions_on_result_states = "warn"
