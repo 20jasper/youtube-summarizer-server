@@ -3,7 +3,7 @@ use crate::prompts::{
 	CHUNKED_COMBINE_TEMPLATE, CHUNKED_SUMMARY_TEMPLATE, ONESHOT_SUMMARY_TEMPLATE,
 };
 use crate::web::clients::CompletionClient;
-use crate::web::services::youtube::{YtService, YtServiceTrait};
+use crate::web::services::youtube::YtServiceTrait;
 use crate::web::utils::YTUrl;
 use core::time::Duration;
 use regex::Regex;
@@ -48,7 +48,11 @@ pub async fn get_transcript_by_url(
 	Ok(transcript)
 }
 
-pub async fn summarize_by_url(url: &YTUrl, pool: &PgPool) -> Result<String> {
+pub async fn summarize_by_url(
+	url: &YTUrl,
+	pool: &PgPool,
+	yt_service: impl YtServiceTrait + Send + Sync + 'static,
+) -> Result<String> {
 	let summary = if let Ok(row) = sqlx::query!(
 		r"
 			SELECT summary 
@@ -64,7 +68,7 @@ pub async fn summarize_by_url(url: &YTUrl, pool: &PgPool) -> Result<String> {
 		row.summary
 			.expect("Summary should not be null")
 	} else {
-		let transcript = get_transcript_by_url(url, pool, YtService::from_env()?).await?;
+		let transcript = get_transcript_by_url(url, pool, yt_service).await?;
 		tracing::debug!("transcript len: {}", transcript.len());
 
 		let summary = multi_chunk_summary(&transcript, 10_000, 100).await?;

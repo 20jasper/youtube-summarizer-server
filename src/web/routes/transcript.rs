@@ -45,7 +45,7 @@ async fn summarize(
 		StatusCode::OK,
 		Json(json!(
 				{
-					"summary": transcript::summarize_by_url(&url.as_str().try_into()?, &pool).await?,
+					"summary": transcript::summarize_by_url(&url.as_str().try_into()?, &pool, YtService::from_env()?).await?,
 				}
 		)),
 	))
