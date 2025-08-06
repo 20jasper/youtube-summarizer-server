@@ -2,7 +2,7 @@ use crate::error::Result;
 use crate::prompts::{
 	CHUNKED_COMBINE_TEMPLATE, CHUNKED_SUMMARY_TEMPLATE, ONESHOT_SUMMARY_TEMPLATE,
 };
-use crate::web::clients::{CompletionClient, DeepInfraClient};
+use crate::web::clients::CompletionClient;
 use crate::web::services::youtube::YtService;
 use crate::web::utils::YTUrl;
 use core::time::Duration;
@@ -52,7 +52,7 @@ pub async fn summarize_by_url(
 	url: &YTUrl,
 	pool: &PgPool,
 	yt_service: impl YtService + Send + Sync + 'static,
-	client: &DeepInfraClient,
+	client: &(impl CompletionClient + Clone + Send + Sync + 'static),
 ) -> Result<String> {
 	let summary = if let Ok(row) = sqlx::query!(
 		r"

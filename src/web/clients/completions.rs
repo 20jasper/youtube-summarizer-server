@@ -1,7 +1,6 @@
 use crate::error::{Error, Result};
 use crate::web::services::env::load_env;
 use derive_builder::Builder;
-use mockall::automock;
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -69,7 +68,6 @@ impl CompletionRequestBuilder {
 	}
 }
 
-#[automock]
 pub trait CompletionClient {
 	fn post(&self, prompt: &str, text: &str) -> impl Future<Output = Result<String>> + Send;
 }

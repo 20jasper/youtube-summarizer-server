@@ -1,4 +1,4 @@
-mod completions;
+pub mod completions;
 mod yt_dlp;
 
 pub use completions::CompletionClient;
