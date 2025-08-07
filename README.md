@@ -25,6 +25,7 @@ The purpose of this project is **not** to
 | Rust        | [Install Rust](https://doc.rust-lang.org/book/ch01-01-installation.html) |
 | cargo-watch | `cargo install cargo-watch`                                              |
 | just        | `cargo install just`                                                     |
+| llvm-cov    | `cargo install cargo-llvm-cov`                                           |
 | npm         | [Install NodeJS](https://nodejs.org/en/download)                         |
 | lefthook    | [Install lefthook](https://lefthook.dev/installation/index.html)         |
 
