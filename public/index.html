@@ -12,18 +12,50 @@
         flex-direction: column;
         margin: 0 auto;
       }
+      .hidden {
+        display: none;
+      }
+      .flex-col {
+        display: flex;
+        flex-direction: column;
+      }
+      form,
+      input {
+        max-width: 20rem;
+      }
     </style>
   </head>
   <body>
     <main>
       <h1>YouTube Summarizer</h1>
-      <form>
-        <label>
+      <form id="youtube">
+        <label class="flex-col">
           YouTube Video link
           <input type="url" name="link" required />
         </label>
         <button type="submit">Get summary</button>
       </form>
+      <div id="ratings" class="hidden">
+        <h2>ratings</h2>
+        <p>Let me know what you think!</p>
+        <form class="flex-col">
+          <div>
+            <label>
+              Like
+              <input type="radio" name="rating" value="like" required />
+            </label>
+            <label>
+              Dislike
+              <input type="radio" name="rating" value="dislike" required />
+            </label>
+          </div>
+          <label class="flex-col">
+            Message (optional)
+            <textarea rows="3" name="message"></textarea>
+          </label>
+          <button type="submit">Submit</button>
+        </form>
+      </div>
       <div id="output"></div>
     </main>
     <script type="module">
@@ -33,13 +65,48 @@
 
       const output = document.querySelector("#output");
       const button = document.querySelector("button");
-      const form = document.querySelector("form");
+      const ytForm = document.querySelector("form#youtube");
+      const ratingsContainer = document.querySelector("#ratings");
+      const ratingsForm = ratingsContainer.querySelector("form");
 
-      if (!output || !button || !form) {
+      if (!output || !button || !ytForm || !ratingsContainer || !ratingsForm) {
         throw new Error("Required elements not found in the document");
       }
 
-      form.addEventListener("submit", (event) => {
+      ratingsForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const formData = new FormData(event.target);
+        const rating = formData.get("rating");
+        const message = formData.get("message") || "";
+        const link = new URLSearchParams(window.location.search).get(PARAM);
+        const videoId = new URL(link).searchParams.get("v");
+
+        if (!link) {
+          output.innerHTML = "<p>Please provide a video link first.</p>";
+          return;
+        }
+
+        fetch(`/summary/rating`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ rating, message, videoId }),
+        })
+          .then((response) => {
+            if (response.ok) {
+              ratingsContainer.innerHTML =
+                "<p>Thank you for your feedback!</p>";
+            } else {
+              ratingsContainer.innerHTML = "<p>Error submitting feedback</p>";
+            }
+          })
+          .catch((error) => {
+            output.innerHTML = `<p>Error submitting feedback: ${error.message}</p>`;
+          });
+      });
+
+      ytForm.addEventListener("submit", (event) => {
         event.preventDefault();
         const link = event.target.link.value.trim();
         const encoded = encodeURIComponent(link);
@@ -62,6 +129,7 @@
               output.innerHTML = `<p>Error: ${message}</p>`;
               return;
             }
+            ratingsContainer.classList.remove("hidden");
             output.innerHTML = `${linkElement} ${marked.parse(summary)}`;
           })
           .catch((error) => {

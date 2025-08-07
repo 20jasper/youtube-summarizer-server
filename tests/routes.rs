@@ -2,11 +2,12 @@
 
 use axum::{
 	body::Body,
-	http::{Request, StatusCode},
+	http::{self, Request, StatusCode},
 	response::Response,
 };
 use http_body_util::BodyExt;
 use mockall::{mock, predicate};
+use serde_json::json;
 // for `collect`
 use sqlx::PgPool;
 use tower::ServiceExt; // for `call`, `oneshot`, and `ready`
@@ -136,6 +137,34 @@ async fn should_get_and_cache_summary(pool: PgPool) -> Result<()> {
 
 	let res = summarize_by_url(&url, &pool, yt_service, &client).await?;
 	assert_eq!(res, summary);
+
+	Ok(())
+}
+
+const TEST_ID: &str = "TEST_ID";
+#[sqlx::test(fixtures(path = "fixtures", scripts("video_with_summary")))]
+async fn should_submit_feedback_for_existing_summary(pool: PgPool) -> Result<()> {
+	let message = "rust is a must";
+	let routes = routes(pool.clone());
+
+	let response = routes
+		.oneshot(
+			Request::builder()
+				.uri("/summary/rating".to_string())
+				.method(http::Method::POST)
+				.header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+				.body(Body::from(
+					json!({"rating": "dislike", "message": message, "videoId": TEST_ID})
+						.to_string(),
+				))?,
+		)
+		.await?;
+	assert_eq!(response.status(), StatusCode::OK);
+
+	let res = sqlx::query!("SELECT message FROM ratings WHERE video_ID = $1", TEST_ID)
+		.fetch_one(&pool)
+		.await?;
+	assert_eq!(res.message, Some(message.into()));
 
 	Ok(())
 }

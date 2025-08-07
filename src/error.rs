@@ -23,6 +23,7 @@ pub enum Error {
 	EnvParse(Infallible),
 
 	CaptionsUnavailable(YTUrl),
+	NotFound,
 
 	#[from]
 	YtUrl(yt_url::Error),
@@ -84,6 +85,7 @@ impl IntoResponse for Error {
 				StatusCode::NOT_FOUND,
 				format!("Captions not available for URL: {}", url.as_str()),
 			),
+			E::NotFound => error_response(StatusCode::NOT_FOUND, "Not Found"),
 			E::Sqlx(_) | E::Reqwest(_) | E::Join(_) | E::Io(_) | E::Custom(_) => {
 				error_response(StatusCode::INTERNAL_SERVER_ERROR, "Unhandled Server Error")
 			}

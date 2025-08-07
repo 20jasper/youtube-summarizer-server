@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\t\tINSERT INTO ratings (video_id, rating, message)\n\t\t\tSELECT $1::VARCHAR, $2, $3\n\t\t\tWHERE EXISTS (\n\t\t\t\tSELECT *\n\t\t\t\tFROM videos\n\t\t\t\tWHERE video_id = $1 AND summary IS NOT NULL\n\t\t\t)\n\t\t",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        {
+          "Custom": {
+            "name": "rating",
+            "kind": {
+              "Enum": [
+                "like",
+                "dislike"
+              ]
+            }
+          }
+        },
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a4e9a1db7f22ac386b81a5184ac9bfe4f959269a43bbdd543136107f032e0f34"
+}
