@@ -23,7 +23,7 @@ lint:
     cargo clippy --all-targets --all-features
 
 sqlx:
-    cargo sqlx prepare 
+    cargo sqlx prepare --workspace -- --all-targets --all-features
 
 test-cov:
     cargo llvm-cov
