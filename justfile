@@ -24,3 +24,6 @@ lint:
 
 sqlx:
     cargo sqlx prepare 
+
+test-cov:
+    cargo llvm-cov
