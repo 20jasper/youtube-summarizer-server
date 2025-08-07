@@ -68,19 +68,38 @@ impl CompletionRequestBuilder {
 	}
 }
 
+pub trait CompletionClient {
+	fn post(&self, prompt: &str, text: &str) -> impl Future<Output = Result<String>> + Send;
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CompletionClient {
+pub struct DeepInfraClient {
 	model: String,
 	url: Url,
 	api_key: String,
 }
 
-impl CompletionClient {
+impl DeepInfraClient {
+	pub fn build(model: String, base_url: &Url, api_key: String) -> Result<Self> {
+		const COMPLETIONS_PATH: &str = "chat/completions";
+		Ok(Self {
+			model,
+			url: base_url
+				.join(COMPLETIONS_PATH)
+				.map_err(|_| {
+					format!(
+						"could not parse completions endpoint: {}",
+						base_url.as_str()
+					)
+				})?,
+			api_key,
+		})
+	}
+
 	pub fn from_env() -> Result<Self> {
 		const OPEN_AI_API_KEY: &str = "OPEN_AI_API_KEY";
 		const OPEN_AI_MODEL: &str = "OPEN_AI_MODEL";
 		const OPEN_AI_BASE_URL: &str = "OPEN_AI_BASE_URL";
-		const COMPLETIONS_PATH: &str = "chat/completions";
 
 		load_env()?;
 
@@ -91,17 +110,14 @@ impl CompletionClient {
 		let url = env::var(OPEN_AI_BASE_URL)
 			.map_err(|_| Error::EnvMissingOrInvalid(OPEN_AI_BASE_URL))?
 			.parse::<Url>()
-			.and_then(|x| x.join(COMPLETIONS_PATH))
 			.map_err(|_| Error::EnvMissingOrInvalid(OPEN_AI_BASE_URL))?;
 
-		Ok(Self {
-			model,
-			url,
-			api_key,
-		})
+		DeepInfraClient::build(model, &url, api_key)
 	}
+}
 
-	pub async fn post(&self, prompt: &str, text: &str) -> Result<String> {
+impl CompletionClient for DeepInfraClient {
+	async fn post(&self, prompt: &str, text: &str) -> Result<String> {
 		let payload = CompletionRequestBuilder::default()
 			.model(&self.model)
 			.max_tokens(700_u32)

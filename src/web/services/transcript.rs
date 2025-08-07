@@ -3,7 +3,7 @@ use crate::prompts::{
 	CHUNKED_COMBINE_TEMPLATE, CHUNKED_SUMMARY_TEMPLATE, ONESHOT_SUMMARY_TEMPLATE,
 };
 use crate::web::clients::CompletionClient;
-use crate::web::services::youtube::{YtService, YtServiceTrait};
+use crate::web::services::youtube::YtService;
 use crate::web::utils::YTUrl;
 use core::time::Duration;
 use regex::Regex;
@@ -15,7 +15,7 @@ use tokio::time::timeout;
 pub async fn get_transcript_by_url(
 	url: &YTUrl,
 	pool: &PgPool,
-	yt_service: impl YtServiceTrait + Send + Sync + 'static,
+	yt_service: impl YtService + Send + Sync + 'static,
 ) -> Result<String> {
 	let transcript = if let Ok(row) =
 		sqlx::query!("SELECT subtitles FROM videos WHERE video_id = $1", url.id())
@@ -48,7 +48,12 @@ pub async fn get_transcript_by_url(
 	Ok(transcript)
 }
 
-pub async fn summarize_by_url(url: &YTUrl, pool: &PgPool) -> Result<String> {
+pub async fn summarize_by_url(
+	url: &YTUrl,
+	pool: &PgPool,
+	yt_service: impl YtService + Send + Sync + 'static,
+	client: &(impl CompletionClient + Clone + Send + Sync + 'static),
+) -> Result<String> {
 	let summary = if let Ok(row) = sqlx::query!(
 		r"
 			SELECT summary 
@@ -64,10 +69,10 @@ pub async fn summarize_by_url(url: &YTUrl, pool: &PgPool) -> Result<String> {
 		row.summary
 			.expect("Summary should not be null")
 	} else {
-		let transcript = get_transcript_by_url(url, pool, YtService::from_env()?).await?;
+		let transcript = get_transcript_by_url(url, pool, yt_service).await?;
 		tracing::debug!("transcript len: {}", transcript.len());
 
-		let summary = multi_chunk_summary(&transcript, 10_000, 100).await?;
+		let summary = summary(client, &transcript, 10_000, 100).await?;
 
 		tracing::debug!("summarized transcript");
 
@@ -85,12 +90,24 @@ pub async fn summarize_by_url(url: &YTUrl, pool: &PgPool) -> Result<String> {
 	Ok(summary)
 }
 
-async fn single_chunk_summary(transcript: &str) -> Result<String> {
-	CompletionClient::from_env()?
+async fn oneshot_summary(client: &impl CompletionClient, transcript: &str) -> Result<String> {
+	client
 		.post(ONESHOT_SUMMARY_TEMPLATE, transcript)
 		.await
 }
-async fn multi_chunk_summary(transcript: &str, size: usize, overlap: usize) -> Result<String> {
+
+async fn chunk_summary(client: impl CompletionClient, chunk: String) -> Result<String> {
+	client
+		.post(CHUNKED_SUMMARY_TEMPLATE, &chunk)
+		.await
+}
+
+async fn summary(
+	client: &(impl CompletionClient + Clone + Send + Sync + 'static),
+	transcript: &str,
+	size: usize,
+	overlap: usize,
+) -> Result<String> {
 	let chunks = chunk_text_by_words(transcript, size, overlap);
 	let len = chunks.len();
 
@@ -98,40 +115,40 @@ async fn multi_chunk_summary(transcript: &str, size: usize, overlap: usize) -> R
 
 	if len == 1 {
 		tracing::debug!("using oneshot prompt");
-		return single_chunk_summary(transcript).await;
+		return oneshot_summary(client, transcript).await;
 	}
 	tracing::debug!("using chunked prompts");
 
-	let summarize_chunk = async |x: String| {
-		CompletionClient::from_env()?
-			.post(CHUNKED_SUMMARY_TEMPLATE, &x)
-			.await
-	};
-	let combine_chunks = async |x: Vec<String>| {
-		let combined = x
-			.iter()
-			.enumerate()
-			.map(|(i, summary)| format!("chunk {}/{}\n{summary}", i + 1, len))
-			.collect::<Vec<_>>()
-			.join("\n");
+	multi_chunk_summary(client, chunks).await
+}
 
-		tracing::debug!(combined);
-
-		CompletionClient::from_env()?
-			.post(CHUNKED_COMBINE_TEMPLATE, &combined)
-			.await
-	};
+async fn multi_chunk_summary(
+	client: &(impl CompletionClient + Clone + Send + Sync + 'static),
+	chunks: Vec<String>,
+) -> Result<String> {
+	let len = chunks.len();
 
 	let summaries = chunks
 		.into_iter()
-		.map(summarize_chunk)
+		.map(|x| chunk_summary(client.clone(), x))
 		.collect::<JoinSet<_>>()
 		.join_all()
 		.await
 		.into_iter()
 		.collect::<Result<Vec<String>>>()?;
 
-	combine_chunks(summaries).await
+	let combined = summaries
+		.iter()
+		.enumerate()
+		.map(|(i, summary)| format!("chunk {}/{}\n{summary}", i + 1, len))
+		.collect::<Vec<_>>()
+		.join("\n");
+
+	tracing::debug!(combined);
+
+	client
+		.post(CHUNKED_COMBINE_TEMPLATE, &combined)
+		.await
 }
 
 /// remove timestamps and duplicate lines

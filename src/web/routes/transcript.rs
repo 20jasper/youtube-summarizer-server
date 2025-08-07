@@ -1,6 +1,7 @@
 use crate::error::Result;
+use crate::web::clients::DeepInfraClient;
 use crate::web::services::transcript;
-use crate::web::services::youtube::YtService;
+use crate::web::services::youtube::YtDlpService;
 use crate::web::utils::YTUrl;
 use axum::extract::State;
 use axum::{Json, Router, extract::Query, http::StatusCode, routing::get};
@@ -19,9 +20,12 @@ async fn transcript(
 	Query(TranscriptParams { url }): Query<TranscriptParams>,
 	State(pool): State<PgPool>,
 ) -> Result<(StatusCode, Json<Value>)> {
-	let transcript =
-		transcript::get_transcript_by_url(&url.as_str().try_into()?, &pool, YtService::from_env()?)
-			.await?;
+	let transcript = transcript::get_transcript_by_url(
+		&url.as_str().try_into()?,
+		&pool,
+		YtDlpService::from_env()?,
+	)
+	.await?;
 	Ok((
 		StatusCode::OK,
 		Json(json!(
@@ -41,11 +45,18 @@ async fn summarize(
 	Query(SummaryParams { url }): Query<SummaryParams>,
 	State(pool): State<PgPool>,
 ) -> Result<(StatusCode, Json<Value>)> {
+	let summary = transcript::summarize_by_url(
+		&url.as_str().try_into()?,
+		&pool,
+		YtDlpService::from_env()?,
+		&DeepInfraClient::from_env()?,
+	)
+	.await?;
 	Ok((
 		StatusCode::OK,
 		Json(json!(
 				{
-					"summary": transcript::summarize_by_url(&url.as_str().try_into()?, &pool).await?,
+					"summary": summary
 				}
 		)),
 	))
