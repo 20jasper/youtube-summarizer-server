@@ -16,12 +16,18 @@ mod oneshot {
 	use serde::Deserialize;
 
 	#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
-	pub struct Choice {
-		pub message: Message,
+	struct Choice {
+		message: Message,
 	}
 	#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 	pub struct Response {
-		pub choices: (Choice,),
+		choices: (Choice,),
+	}
+
+	impl Response {
+		pub fn content(self) -> String {
+			self.choices.0.message.content
+		}
 	}
 }
 
@@ -162,14 +168,12 @@ impl DeepInfraClient {
 
 impl CompletionClient for DeepInfraClient {
 	async fn post(&self, prompt: &str, text: &str) -> Result<String> {
-		let response = self
+		Ok(self
 			.base_post(prompt, text, false)
-			.await?;
-		let json = response
+			.await?
 			.json::<oneshot::Response>()
-			.await?;
-		let content = json.choices.0.message.content.clone();
-		Ok(content)
+			.await?
+			.content())
 	}
 
 	async fn post_stream(self, prompt: &str, text: &str) -> impl Stream<Item = sse::Event> + Send {
@@ -185,12 +189,8 @@ impl CompletionClient for DeepInfraClient {
 			.unwrap()
 			.bytes_stream()
 			.filter_map(filter_map_nonempty)
-			.chain(futures::stream::iter((0..10).map(|_| {
-				stream::SseMessage {
-					message: None,
-					kind: stream::SseState::Done,
-				}
-				.into()
-			})))
+			.chain(futures::stream::iter(
+				(0..10).map(|_| stream::SseMessage::Done.into()),
+			))
 	}
 }

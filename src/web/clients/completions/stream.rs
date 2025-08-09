@@ -1,32 +1,38 @@
 use axum::response::sse;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ChatCompletionChunk {
-	pub choices: (Choice,),
+mod chunk {
+	use serde::Deserialize;
+	#[derive(Debug, Deserialize)]
+	pub struct ChatCompletionChunk {
+		choices: (Choice,),
+	}
+
+	impl ChatCompletionChunk {
+		pub fn content(self) -> Option<String> {
+			Some(self.choices.0.delta?.content)
+		}
+	}
+
+	#[derive(Debug, Deserialize)]
+	struct Choice {
+		delta: Option<Delta>,
+	}
+
+	#[derive(Debug, Deserialize)]
+	struct Delta {
+		content: String,
+	}
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Choice {
-	pub delta: Option<Delta>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Delta {
-	pub content: String,
-}
+use chunk::ChatCompletionChunk;
 
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum SseState {
-	Message,
+#[serde(tag = "kind", rename_all = "camelCase", content = "message")]
+pub enum SseMessage {
+	Message(String),
 	Done,
 	Error,
-}
-#[derive(Debug, Serialize)]
-pub struct SseMessage {
-	pub message: Option<String>,
-	pub kind: SseState,
 }
 
 impl From<SseMessage> for sse::Event {
@@ -44,30 +50,11 @@ pub fn bytes_to_event(bytes: &[u8]) -> Option<sse::Event> {
 	tracing::debug!("bytes: {:?}", str::from_utf8(bytes));
 
 	if bytes.starts_with(b"[DONE]") {
-		return Some(
-			SseMessage {
-				message: None,
-				kind: SseState::Done,
-			}
-			.into(),
-		);
+		return Some(SseMessage::Done.into());
 	}
-	let json = serde_json::from_slice::<ChatCompletionChunk>(bytes);
+	let content = serde_json::from_slice::<ChatCompletionChunk>(bytes)
+		.ok()?
+		.content()?;
 
-	if let Ok(ChatCompletionChunk {
-		choices: (Choice {
-			delta: Some(Delta { content }),
-		},),
-	}) = json
-	{
-		Some(
-			SseMessage {
-				message: Some(content),
-				kind: SseState::Message,
-			}
-			.into(),
-		)
-	} else {
-		None
-	}
+	Some(SseMessage::Message(content).into())
 }
