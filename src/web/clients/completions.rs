@@ -3,6 +3,7 @@ use crate::web::clients::completions::stream::bytes_to_event;
 use crate::web::services::env::load_env;
 use axum::body::Bytes;
 use axum::response::sse;
+use core::pin::Pin;
 use derive_builder::Builder;
 use futures::{Stream, StreamExt};
 use reqwest::{Client, Url};
@@ -91,7 +92,7 @@ pub trait CompletionClient {
 		self,
 		prompt: &str,
 		text: &str,
-	) -> impl Future<Output = impl Stream<Item = sse::Event> + Send>;
+	) -> impl Future<Output = Result<Pin<Box<dyn Stream<Item = sse::Event> + Send>>>>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -176,7 +177,11 @@ impl CompletionClient for DeepInfraClient {
 			.content())
 	}
 
-	async fn post_stream(self, prompt: &str, text: &str) -> impl Stream<Item = sse::Event> + Send {
+	async fn post_stream(
+		self,
+		prompt: &str,
+		text: &str,
+	) -> Result<Pin<Box<dyn Stream<Item = sse::Event> + Send>>> {
 		async fn filter_map_nonempty(b: reqwest::Result<Bytes>) -> Option<sse::Event> {
 			let b = b.ok()?;
 			if b.is_empty() {
@@ -184,13 +189,14 @@ impl CompletionClient for DeepInfraClient {
 			}
 			bytes_to_event(&b)
 		}
-		self.base_post(prompt, text, true)
-			.await
-			.unwrap()
-			.bytes_stream()
-			.filter_map(filter_map_nonempty)
-			.chain(futures::stream::iter(
-				(0..10).map(|_| stream::SseMessage::Done.into()),
-			))
+		Ok(Box::pin(
+			self.base_post(prompt, text, true)
+				.await?
+				.bytes_stream()
+				.filter_map(filter_map_nonempty)
+				.chain(futures::stream::iter(
+					(0..10).map(|_| stream::SseMessage::Done.into()),
+				)),
+		))
 	}
 }

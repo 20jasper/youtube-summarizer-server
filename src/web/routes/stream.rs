@@ -1,3 +1,4 @@
+use crate::error::Result;
 use crate::{
 	prompts::ONESHOT_SUMMARY_TEMPLATE,
 	web::clients::{CompletionClient, DeepInfraClient},
@@ -10,13 +11,14 @@ use axum::{
 use futures::StreamExt;
 use sqlx::PgPool;
 
-pub async fn stream_summary() -> Sse<impl futures::Stream<Item = Result<Event, axum::Error>>> {
+pub async fn stream_summary()
+-> Result<Sse<impl futures::Stream<Item = std::result::Result<Event, axum::Error>>>> {
 	let client = DeepInfraClient::from_env().unwrap();
 	let stream = client
 		.post_stream(ONESHOT_SUMMARY_TEMPLATE, "hello gamer")
-		.await
+		.await?
 		.map(Ok);
-	Sse::new(stream)
+	Ok(Sse::new(stream))
 }
 
 pub fn routes() -> Router<PgPool> {
