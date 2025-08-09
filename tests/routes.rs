@@ -93,9 +93,12 @@ async fn should_get_and_cache_transcript(pool: PgPool) -> Result<()> {
 
 mock! {
 	pub Completion {}
+	#[allow(refining_impl_trait, reason="this is for tests and for some reason it doesn't like impls in returns")]
 	impl CompletionClient for Completion {
 		fn post(&self, prompt: &str, text: &str) -> impl Future<Output = youtube_summarizer_server::error::Result<String>> + Send;
+		fn post_stream(self, prompt: &str, text: &str) -> impl Future<Output = youtube_summarizer_server::error::Result<core::pin::Pin<Box<dyn futures::Stream<Item = axum::response::sse::Event> + Send>>>> + Send;
 	}
+
 	impl Clone for Completion {
 		fn clone(&self) -> Self;
 	}
