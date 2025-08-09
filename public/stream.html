@@ -3,51 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <title>Streaming Test</title>
+    <script type="module">
+      import { attachEventSource } from "./sse.js";
+
+      const STREAM_URL = "/stream";
+      const markdown = document.getElementById("markdown");
+      if (!markdown) throw new Error("missing elements");
+      attachEventSource(markdown, "/stream");
+    </script>
   </head>
   <body>
     <h1>Test</h1>
-    <ul id="list"></ul>
-    <p id="text"></p>
-    <script>
-      // @ts-check
-      let text = "";
-      const textElement = document.getElementById("text");
-
-      const evtSource = new EventSource("/stream");
-      evtSource.addEventListener("done", (event) => {
-        console.log("Stream done");
-        evtSource.close();
-      });
-
-      evtSource.addEventListener("message", (event) => {
-        console.log(event);
-        const data = JSON.parse(event.data);
-        const { kind, message } = data;
-        switch (kind) {
-          case "done":
-            console.log("Stream done");
-            evtSource.close();
-            break;
-          case "message":
-            console.log("Stream message:", data);
-            text += message;
-            textElement.textContent = text;
-            break;
-          case "error":
-            console.error("Stream error:", data);
-            break;
-          default:
-            throw new Error("Unknown event kind: " + kind);
-        }
-      });
-
-      evtSource.onerror = (err) => {
-        console.error("EventSource failed:", err);
-      };
-      evtSource.onopen = () => {
-        console.log("Connection opened");
-      };
-    </script>
+    <p>Markdown will stream here!</p>
+    <div id="markdown"></div>
   </body>
 </html>
