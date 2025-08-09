@@ -5,10 +5,9 @@ use axum::{
 	http::{self, Request, StatusCode},
 	response::Response,
 };
-use http_body_util::BodyExt;
+use http_body_util::BodyExt; // for `collect`
 use mockall::{mock, predicate};
 use serde_json::json;
-// for `collect`
 use sqlx::PgPool;
 use tower::ServiceExt; // for `call`, `oneshot`, and `ready`
 use youtube_summarizer_server::{
@@ -18,8 +17,7 @@ use youtube_summarizer_server::{
 		clients::CompletionClient,
 		routes::routes,
 		services::{
-			transcript::{get_transcript_by_url, summarize_by_url},
-			youtube::MockYtService,
+			summary::summarize_by_url, transcript::get_transcript_by_url, youtube::MockYtService,
 		},
 		utils::YTUrl,
 	},

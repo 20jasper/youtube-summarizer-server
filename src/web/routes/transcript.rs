@@ -1,5 +1,6 @@
 use crate::error::{Error, Result};
 use crate::web::clients::DeepInfraClient;
+use crate::web::services::summary::summarize_by_url;
 use crate::web::services::transcript;
 use crate::web::services::youtube::YtDlpService;
 use crate::web::utils::YTUrl;
@@ -47,7 +48,7 @@ async fn summarize(
 	Query(SummaryParams { url }): Query<SummaryParams>,
 	State(pool): State<PgPool>,
 ) -> Result<(StatusCode, Json<Value>)> {
-	let summary = transcript::summarize_by_url(
+	let summary = summarize_by_url(
 		&url.as_str().try_into()?,
 		&pool,
 		YtDlpService::from_env()?,
