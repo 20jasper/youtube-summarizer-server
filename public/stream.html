@@ -10,7 +10,7 @@
       const STREAM_URL = "/stream";
       const markdown = document.getElementById("markdown");
       if (!markdown) throw new Error("missing elements");
-      attachEventSource(markdown, "/stream");
+      attachEventSource(markdown, STREAM_URL);
     </script>
   </head>
   <body>
