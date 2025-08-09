@@ -1,24 +1,35 @@
 use crate::error::{Error, Result};
+use crate::web::clients::completions::stream::bytes_to_event;
 use crate::web::services::env::load_env;
+use axum::body::Bytes;
+use axum::response::sse;
 use derive_builder::Builder;
+use futures::{Stream, StreamExt};
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use std::env;
+
+pub mod stream;
+
+mod oneshot {
+	use crate::web::clients::completions::Message;
+	use serde::Deserialize;
+
+	#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
+	pub struct Choice {
+		pub message: Message,
+	}
+	#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
+	pub struct Response {
+		pub choices: (Choice,),
+	}
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct Message {
 	pub role: String,
 	pub content: String,
 }
-#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
-pub struct Choice {
-	pub message: Message,
-}
-#[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
-pub struct Response {
-	pub choices: Vec<Choice>,
-}
-
 /// more documentation can be found here <https://deepinfra.com/meta-llama/Meta-Llama-3.1-70B-Instruct/api?version=25acb1b514688b222a02a89c6976a8d7ad0e017f#input-model>
 #[derive(Clone, Serialize, Deserialize, Default, Debug, Builder, PartialEq)]
 #[builder(pattern = "mutable")]
@@ -70,6 +81,11 @@ impl CompletionRequestBuilder {
 
 pub trait CompletionClient {
 	fn post(&self, prompt: &str, text: &str) -> impl Future<Output = Result<String>> + Send;
+	fn post_stream(
+		self,
+		prompt: &str,
+		text: &str,
+	) -> impl Future<Output = impl Stream<Item = sse::Event> + Send>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -114,10 +130,8 @@ impl DeepInfraClient {
 
 		DeepInfraClient::build(model, &url, api_key)
 	}
-}
 
-impl CompletionClient for DeepInfraClient {
-	async fn post(&self, prompt: &str, text: &str) -> Result<String> {
+	async fn base_post(&self, prompt: &str, text: &str, stream: bool) -> Result<reqwest::Response> {
 		let payload = CompletionRequestBuilder::default()
 			.model(&self.model)
 			.max_tokens(700_u32)
@@ -131,6 +145,7 @@ impl CompletionClient for DeepInfraClient {
 					content: text.into(),
 				},
 			])
+			.stream(stream)
 			.build()
 			.map_err(|e| format!("couldn't build completion request: {e:?}"))?;
 
@@ -141,14 +156,41 @@ impl CompletionClient for DeepInfraClient {
 			.send()
 			.await?;
 
-		let json = response.json::<Response>().await?;
-		let content = json
-			.choices
-			.first()
-			.unwrap()
-			.message
-			.content
-			.clone();
+		Ok(response)
+	}
+}
+
+impl CompletionClient for DeepInfraClient {
+	async fn post(&self, prompt: &str, text: &str) -> Result<String> {
+		let response = self
+			.base_post(prompt, text, false)
+			.await?;
+		let json = response
+			.json::<oneshot::Response>()
+			.await?;
+		let content = json.choices.0.message.content.clone();
 		Ok(content)
+	}
+
+	async fn post_stream(self, prompt: &str, text: &str) -> impl Stream<Item = sse::Event> + Send {
+		async fn filter_map_nonempty(b: reqwest::Result<Bytes>) -> Option<sse::Event> {
+			let b = b.ok()?;
+			if b.is_empty() {
+				return None;
+			}
+			bytes_to_event(&b)
+		}
+		self.base_post(prompt, text, true)
+			.await
+			.unwrap()
+			.bytes_stream()
+			.filter_map(filter_map_nonempty)
+			.chain(futures::stream::iter((0..10).map(|_| {
+				stream::SseMessage {
+					message: None,
+					kind: stream::SseState::Done,
+				}
+				.into()
+			})))
 	}
 }
