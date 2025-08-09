@@ -1,13 +1,15 @@
 use crate::error::{Error, Result};
 use crate::web::clients::DeepInfraClient;
-use crate::web::services::summary::summarize_by_url;
+use crate::web::services::summary::summarize_by_url_stream;
 use crate::web::services::transcript;
 use crate::web::services::youtube::YtDlpService;
 use crate::web::utils::YTUrl;
 use axum::extract::State;
+use axum::response::{Sse, sse};
 use axum::routing::post;
 use axum::{Json, Router, extract::Query, http::StatusCode, routing::get};
 use axum_macros::debug_handler;
+use futures::StreamExt;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -47,22 +49,16 @@ struct SummaryParams {
 async fn summarize(
 	Query(SummaryParams { url }): Query<SummaryParams>,
 	State(pool): State<PgPool>,
-) -> Result<(StatusCode, Json<Value>)> {
-	let summary = summarize_by_url(
+) -> Result<Sse<impl futures::Stream<Item = std::result::Result<sse::Event, axum::Error>>>> {
+	let stream = summarize_by_url_stream(
 		&url.as_str().try_into()?,
 		&pool,
 		YtDlpService::from_env()?,
-		&DeepInfraClient::from_env()?,
+		DeepInfraClient::from_env()?,
 	)
-	.await?;
-	Ok((
-		StatusCode::OK,
-		Json(json!(
-				{
-					"summary": summary
-				}
-		)),
-	))
+	.await?
+	.map(Ok);
+	Ok(Sse::new(stream))
 }
 
 #[derive(Deserialize, Debug, PartialEq, Eq, sqlx::Type)]
