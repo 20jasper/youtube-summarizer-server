@@ -12,13 +12,10 @@ use sqlx::PgPool;
 use tower::ServiceExt; // for `call`, `oneshot`, and `ready`
 use youtube_summarizer_server::{
 	error::ErrorMessage,
-	prompts::ONESHOT_SUMMARY_TEMPLATE,
 	web::{
 		clients::CompletionClient,
 		routes::routes,
-		services::{
-			summary::summarize_by_url, transcript::get_transcript_by_url, youtube::MockYtService,
-		},
+		services::{transcript::get_transcript_by_url, youtube::MockYtService},
 		utils::YTUrl,
 	},
 };
@@ -101,46 +98,8 @@ mock! {
 		fn clone(&self) -> Self;
 	}
 }
-#[sqlx::test]
-async fn should_get_and_cache_summary(pool: PgPool) -> Result<()> {
-	let url = YTUrl::try_from(
-		"https://www.youtube.com/watch?v=DjcC6p_8fpE&pp=ygUWamFjb2IgYXNwZXIgdHlwZXNjcmlwdA%3D%3D",
-	)?;
-	let summary = "Cheese is scrumptious";
 
-	let mut yt_service = MockYtService::new();
-	yt_service
-		.expect_fetch_captions()
-		.with(predicate::eq(url.clone()))
-		.times(1)
-		.returning(|_url| Ok(VTT.to_owned()));
-
-	let mut client = MockCompletion::new();
-	client
-		.expect_post()
-		.with(
-			predicate::eq(ONESHOT_SUMMARY_TEMPLATE),
-			predicate::eq(CLEAN_VTT),
-		)
-		.times(1)
-		.returning(|_prompt, _text| Box::pin(async { Ok(summary.to_owned()) }));
-
-	let res = summarize_by_url(&url, &pool, yt_service, &client).await?;
-	assert_eq!(res, summary);
-
-	let mut yt_service = MockYtService::new();
-	yt_service
-		.expect_fetch_captions()
-		.times(0);
-
-	let mut client = MockCompletion::new();
-	client.expect_post().times(0);
-
-	let res = summarize_by_url(&url, &pool, yt_service, &client).await?;
-	assert_eq!(res, summary);
-
-	Ok(())
-}
+// TODO test streams
 
 const TEST_ID: &str = "TEST_ID";
 #[sqlx::test(fixtures(path = "fixtures", scripts("video_with_summary")))]

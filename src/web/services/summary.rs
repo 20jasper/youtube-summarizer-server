@@ -1,3 +1,5 @@
+use core::pin::Pin;
+
 use crate::{
 	error::Result,
 	prompts::{CHUNKED_COMBINE_TEMPLATE, CHUNKED_SUMMARY_TEMPLATE, ONESHOT_SUMMARY_TEMPLATE},
@@ -7,69 +9,80 @@ use crate::{
 		utils::YTUrl,
 	},
 };
+use axum::response::sse;
+use futures::Stream;
 use sqlx::PgPool;
 use tokio::task::JoinSet;
 
-pub async fn summarize_by_url(
+// TODO fix caching!!!
+pub async fn summarize_by_url_stream(
 	url: &YTUrl,
 	pool: &PgPool,
 	yt_service: impl YtService + Send + Sync + 'static,
-	client: &(impl CompletionClient + Clone + Send + Sync + 'static),
-) -> Result<String> {
-	let summary = if let Ok(row) = sqlx::query!(
-		r"
-			SELECT summary 
-			FROM videos 
-			WHERE video_id = $1 AND summary IS NOT NULL
-		",
-		url.id()
-	)
-	.fetch_one(pool)
-	.await
-	{
-		tracing::debug!("found summary in database");
-		row.summary
-			.expect("Summary should not be null")
-	} else {
-		let transcript = get_transcript_by_url(url, pool, yt_service).await?;
-		tracing::debug!("transcript len: {}", transcript.len());
+	client: impl CompletionClient + Clone + Send + Sync + 'static,
+) -> Result<Pin<Box<dyn Stream<Item = sse::Event> + Send>>> {
+	// let summary = if let Ok(row) = sqlx::query!(
+	// 	r"
+	// 		SELECT summary
+	// 		FROM videos
+	// 		WHERE video_id = $1 AND summary IS NOT NULL
+	// 	",
+	// 	url.id()
+	// )
+	// .fetch_one(pool)
+	// .await
+	// {
+	// 	tracing::debug!("found summary in database");
+	// 	row.summary
+	// 		.expect("Summary should not be null")
+	// } else {
+	let transcript = get_transcript_by_url(url, pool, yt_service).await?;
+	tracing::debug!(
+		"transcript len: {}",
+		transcript
+			.split_ascii_whitespace()
+			.count()
+	);
 
-		let summary = summary(client, &transcript, 10_000, 100).await?;
+	let summary = summary(client, &transcript, 10_000, 100).await?;
 
-		tracing::debug!("summarized transcript");
+	tracing::debug!("summarized transcript");
 
-		sqlx::query!(
-			"UPDATE videos SET summary = $1 WHERE video_id = $2",
-			summary,
-			url.id(),
-		)
-		.execute(pool)
-		.await?;
+	// sqlx::query!(
+	// 	"UPDATE videos SET summary = $1 WHERE video_id = $2",
+	// 	summary,
+	// 	url.id(),
+	// )
+	// .execute(pool)
+	// .await?;
 
-		summary
-	};
+	// 	summary
+	// };
 
 	Ok(summary)
 }
 
-async fn oneshot_summary(client: &impl CompletionClient, transcript: &str) -> Result<String> {
+async fn oneshot_summary_stream(
+	client: impl CompletionClient,
+	transcript: &str,
+) -> Result<Pin<Box<dyn Stream<Item = sse::Event> + Send>>> {
 	client
-		.post(ONESHOT_SUMMARY_TEMPLATE, transcript)
+		.post_stream(ONESHOT_SUMMARY_TEMPLATE, transcript)
 		.await
 }
 
-async fn chunk_summary(client: impl CompletionClient, chunk: String) -> Result<String> {
+async fn chunk_summary_oneshot(client: impl CompletionClient, chunk: String) -> Result<String> {
 	client
 		.post(CHUNKED_SUMMARY_TEMPLATE, &chunk)
 		.await
 }
 
 async fn summary(
-	client: &(impl CompletionClient + Clone + Send + Sync + 'static),
+	client: impl CompletionClient + Clone + Send + Sync + 'static,
 	transcript: &str,
 	size: usize,
 	overlap: usize,
-) -> Result<String> {
+) -> Result<Pin<Box<dyn Stream<Item = sse::Event> + Send>>> {
 	let chunks = chunk_text_by_words(transcript, size, overlap);
 	let len = chunks.len();
 
@@ -77,22 +90,22 @@ async fn summary(
 
 	if len == 1 {
 		tracing::debug!("using oneshot prompt");
-		return oneshot_summary(client, transcript).await;
+		return oneshot_summary_stream(client.clone(), transcript).await;
 	}
 	tracing::debug!("using chunked prompts");
 
-	multi_chunk_summary(client, chunks).await
+	multi_chunk_summary_stream(client, chunks).await
 }
 
-async fn multi_chunk_summary(
-	client: &(impl CompletionClient + Clone + Send + Sync + 'static),
+async fn multi_chunk_summary_stream(
+	client: impl CompletionClient + Clone + Send + Sync + 'static,
 	chunks: Vec<String>,
-) -> Result<String> {
+) -> Result<Pin<Box<dyn Stream<Item = sse::Event> + Send>>> {
 	let len = chunks.len();
 
 	let summaries = chunks
 		.into_iter()
-		.map(|x| chunk_summary(client.clone(), x))
+		.map(|x| chunk_summary_oneshot(client.clone(), x))
 		.collect::<JoinSet<_>>()
 		.join_all()
 		.await
@@ -109,7 +122,7 @@ async fn multi_chunk_summary(
 	tracing::debug!(combined);
 
 	client
-		.post(CHUNKED_COMBINE_TEMPLATE, &combined)
+		.post_stream(CHUNKED_COMBINE_TEMPLATE, &combined)
 		.await
 }
 
