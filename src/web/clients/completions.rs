@@ -183,11 +183,7 @@ impl CompletionClient for DeepInfraClient {
 		text: &str,
 	) -> Result<Pin<Box<dyn Stream<Item = sse::Event> + Send>>> {
 		async fn filter_map_nonempty(b: reqwest::Result<Bytes>) -> Option<sse::Event> {
-			let b = b.ok()?;
-			if b.is_empty() {
-				return None;
-			}
-			bytes_to_event(&b)
+			bytes_to_event(&b.ok()?)
 		}
 		Ok(Box::pin(
 			self.base_post(prompt, text, true)
@@ -195,7 +191,7 @@ impl CompletionClient for DeepInfraClient {
 				.bytes_stream()
 				.filter_map(filter_map_nonempty)
 				.chain(futures::stream::iter(
-					(0..10).map(|_| stream::SseMessage::Done.into()),
+					(0..5).map(|_| stream::SseMessage::Done.into()),
 				)),
 		))
 	}

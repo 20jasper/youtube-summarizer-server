@@ -44,17 +44,19 @@ impl From<SseMessage> for sse::Event {
 }
 
 pub fn bytes_to_event(bytes: &[u8]) -> Option<sse::Event> {
+	if bytes.is_empty() {
+		return None;
+	}
+
 	let i = bytes.iter().position(|&x| x == b'{')?;
 	let bytes = bytes.get(i..)?;
-
-	tracing::debug!("bytes: {:?}", str::from_utf8(bytes));
-
-	if bytes.starts_with(b"[DONE]") {
-		return Some(SseMessage::Done.into());
-	}
 	let content = serde_json::from_slice::<ChatCompletionChunk>(bytes)
 		.ok()?
 		.content()?;
+
+	if content.is_empty() {
+		return None;
+	}
 
 	Some(SseMessage::Message(content).into())
 }
