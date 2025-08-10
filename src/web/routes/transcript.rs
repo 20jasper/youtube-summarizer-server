@@ -52,7 +52,7 @@ async fn summarize(
 ) -> Result<Sse<impl futures::Stream<Item = std::result::Result<sse::Event, axum::Error>>>> {
 	let stream = summarize_by_url_stream(
 		&url.as_str().try_into()?,
-		&pool,
+		pool,
 		YtDlpService::from_env()?,
 		DeepInfraClient::from_env()?,
 	)
