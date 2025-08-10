@@ -135,12 +135,34 @@ fn chunk_text_by_words(s: &str, size: usize, overlap: usize) -> Vec<String> {
 	let chunks = words
 		.len()
 		.checked_div(offset)
-		.expect("offset should never be 0");
+		.expect("offset should never be 0")
+		+ 1;
+
+	tracing::debug!("{} chunks in func", chunks);
 
 	(0..chunks)
 		.map(|i| i.saturating_mul(offset))
-		.map(|start| start..(start.saturating_add(size)))
-		.filter_map(|r| Some(words.get(r)?.to_vec().join(" ")))
+		.map(|start| {
+			start
+				..(start
+					.saturating_add(size)
+					.min(words.len()))
+		})
+		.scan(false, |done, r| {
+			(!*done).then(|| {
+				if r.end >= words.len() {
+					*done = true;
+				}
+				r
+			})
+		})
+		.map(|r| {
+			words
+				.get(r.clone())
+				.expect("chunked text should be in range")
+				.to_vec()
+				.join(" ")
+		})
 		.collect()
 }
 
@@ -170,5 +192,48 @@ mod tests {
 		#[case] expected: Vec<String>,
 	) {
 		assert_eq!(chunk_text_by_words(text, chunk, overlap), expected);
+	}
+
+	fn gen_n_words(n: usize) -> String {
+		"a ".repeat(n)
+	}
+	fn word_count(s: &str) -> usize {
+		s.split_ascii_whitespace().count()
+	}
+
+	#[rstest]
+	#[case(6910, 6500, 200, vec![6500, 610])]
+	#[case(1200, 1500, 200, vec![1200])]
+	#[case(6600, 6500, 200, vec![6500, 300])]
+	#[case(7000, 3000, 500, vec![3000, 3000, 2000])]
+	#[case(12999, 6500, 0, vec![6500, 6499])]
+	#[case(14, 5, 2, vec![5, 5, 5, 5])]
+	#[case(16, 5, 2, vec![5, 5, 5, 5, 4])]
+	#[case(66000, 10_000, 100, vec![10000, 10000, 10000, 10000, 10000, 10000, 6600])]
+	#[case(5, 3, 1, vec![3, 3])]
+	#[case(5, 2, 1, vec![2, 2, 2, 2])]
+	fn should_have_correct_chunk_sizes(
+		#[case] input_size: usize,
+		#[case] size: usize,
+		#[case] overlap: usize,
+		#[case] expected_sizes: Vec<usize>,
+	) {
+		let chunks = chunk_text_by_words(&gen_n_words(input_size), size, overlap);
+
+		assert_eq!(
+			chunks
+				.iter()
+				.map(|x| x.split_ascii_whitespace().count())
+				.collect::<Vec<usize>>(),
+			expected_sizes
+		);
+		assert_eq!(chunks.len(), expected_sizes.len());
+
+		let total_overlap = overlap * (expected_sizes.len() - 1);
+		let total_size = chunks
+			.iter()
+			.map(|x| word_count(x))
+			.sum::<usize>();
+		assert_eq!(total_size, input_size + total_overlap);
 	}
 }
