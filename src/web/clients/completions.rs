@@ -1,10 +1,11 @@
 use crate::error::{Error, Result};
 use crate::web::clients::completions::stream::{SseMessage, bytes_to_sse_message};
 use crate::web::services::env::load_env;
-use axum::body::Bytes;
+use core::future::Future;
 use core::pin::Pin;
 use derive_builder::Builder;
 use futures::{Stream, StreamExt};
+use mockall::automock;
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -85,6 +86,7 @@ impl CompletionRequestBuilder {
 	}
 }
 
+#[automock]
 pub trait CompletionClient {
 	fn post(&self, prompt: &str, text: &str) -> impl Future<Output = Result<String>> + Send;
 	fn post_stream(
@@ -181,14 +183,14 @@ impl CompletionClient for DeepInfraClient {
 		prompt: &str,
 		text: &str,
 	) -> Result<Pin<Box<dyn Stream<Item = SseMessage> + Send>>> {
-		async fn filter_map_nonempty(b: reqwest::Result<Bytes>) -> Option<SseMessage> {
-			bytes_to_sse_message(&b.ok()?)
-		}
 		Ok(Box::pin(
 			self.base_post(prompt, text, true)
 				.await?
 				.bytes_stream()
-				.filter_map(filter_map_nonempty)
+				.filter_map(|res| async {
+					res.ok()
+						.and_then(|b| bytes_to_sse_message(&b))
+				})
 				.chain(futures::stream::iter(0..5).map(|_| SseMessage::Done)),
 		))
 	}
