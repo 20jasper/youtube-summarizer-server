@@ -123,11 +123,9 @@ async fn summary(
 	overlap: usize,
 ) -> Result<Pin<Box<dyn Stream<Item = SseMessage> + Send>>> {
 	let chunks = chunk_text_by_words(transcript, size, overlap);
-	let len = chunks.len();
+	tracing::debug!("{} chunks", chunks.len());
 
-	tracing::debug!("{len} chunks");
-
-	if len == 1 {
+	if chunks.len() == 1 {
 		tracing::debug!("using oneshot prompt");
 		return oneshot_summary_stream(client.clone(), transcript).await;
 	}
@@ -140,8 +138,6 @@ async fn multi_chunk_summary_stream(
 	client: impl CompletionClient + Clone + Send + Sync + 'static,
 	chunks: Vec<String>,
 ) -> Result<Pin<Box<dyn Stream<Item = SseMessage> + Send>>> {
-	let len = chunks.len();
-
 	let summaries = chunks
 		.into_iter()
 		.map(|x| chunk_summary_oneshot(client.clone(), x))
@@ -154,7 +150,7 @@ async fn multi_chunk_summary_stream(
 	let combined = summaries
 		.iter()
 		.enumerate()
-		.map(|(i, summary)| format!("chunk {}/{}\n{summary}", i + 1, len))
+		.map(|(i, summary)| format!("chunk {}/{}\n{summary}", i + 1, summaries.len()))
 		.collect::<Vec<_>>()
 		.join("\n");
 
@@ -210,6 +206,11 @@ fn chunk_text_by_chars(s: &str, size: usize, overlap: usize) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
+	#![allow(clippy::needless_pass_by_value)]
+	#![allow(clippy::indexing_slicing)]
+
+	use core::iter;
+
 	use super::*;
 	use rstest::rstest;
 
@@ -277,5 +278,77 @@ mod tests {
 			.map(|x| word_count(x))
 			.sum::<usize>();
 		assert_eq!(total_size, input_size + total_overlap);
+	}
+
+	#[quickcheck_macros::quickcheck]
+	fn overlap_should_be_in_total_length(input: Vec<()>, size: usize, overlap: usize) -> bool {
+		let chunks = chunk_items(&input, size, overlap);
+
+		let total_len = chunks
+			.iter()
+			.map(|x| x.len())
+			.sum::<usize>();
+
+		total_len == input.len() + overlap * (chunks.len() - 1)
+	}
+
+	#[quickcheck_macros::quickcheck]
+	fn chunks_should_overlap(input: Vec<bool>, size: usize, overlap: usize) -> bool {
+		let chunks = chunk_items(&input, size, overlap);
+		if chunks.len() <= 2 {
+			return true;
+		}
+
+		chunks
+			.windows(2)
+			.all(|w| w[0][size - overlap..] == w[1][..overlap])
+	}
+
+	#[quickcheck_macros::quickcheck]
+	fn no_overlap_concat_is_identity(input: Vec<()>, size: usize) -> bool {
+		let chunks = chunk_items(&input, size, 0);
+
+		chunks.concat() == input
+	}
+
+	#[quickcheck_macros::quickcheck]
+	fn fallback_returns_single_chunk_when_step_invalid(
+		input: Vec<u8>,
+		chunk: usize,
+		overlap: usize,
+	) -> bool {
+		let step = chunk.saturating_sub(overlap);
+		if (1..input.len()).contains(&step) {
+			return true;
+		}
+
+		let chunks = chunk_items(&input, chunk, overlap);
+		chunks == [input.as_slice()]
+	}
+
+	#[quickcheck_macros::quickcheck]
+	fn reconstruction_identity_with_overlap(
+		input: Vec<usize>,
+		chunk: usize,
+		overlap: usize,
+	) -> bool {
+		let input_clone = input.clone();
+		let chunks = chunk_items(&input_clone, chunk, overlap);
+		let combined: Vec<_> = iter::once(chunks[0])
+			.chain(
+				chunks
+					.iter()
+					.skip(1)
+					.map(|c| &c[overlap..]),
+			)
+			.collect();
+
+		combined == [input]
+	}
+
+	#[quickcheck_macros::quickcheck]
+	fn empty_input_always_single_empty_chunk(chunk: usize, overlap: usize) -> bool {
+		let chunks = chunk_items::<usize>(&[], chunk, overlap);
+		chunks.len() == 1 && chunks[0].is_empty()
 	}
 }
