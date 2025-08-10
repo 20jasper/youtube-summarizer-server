@@ -7,8 +7,7 @@ pre-commit:
       run: just format
       stage_fixed: true
     - name: sqlx
-      run: just sqlx
-      stage_fixed: true
+      run: just sqlx && git add .sqlx
 
 pre-push:
   jobs:
