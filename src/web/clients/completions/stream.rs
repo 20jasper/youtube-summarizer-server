@@ -1,9 +1,9 @@
 use axum::response::sse;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 mod chunk {
-	use serde::Deserialize;
-	#[derive(Debug, Deserialize)]
+	use serde::{Deserialize, Serialize};
+	#[derive(Debug, Deserialize, Serialize)]
 	pub struct ChatCompletionChunk {
 		choices: (Choice,),
 	}
@@ -14,12 +14,12 @@ mod chunk {
 		}
 	}
 
-	#[derive(Debug, Deserialize)]
+	#[derive(Debug, Deserialize, Serialize)]
 	struct Choice {
 		delta: Option<Delta>,
 	}
 
-	#[derive(Debug, Deserialize)]
+	#[derive(Debug, Deserialize, Serialize)]
 	struct Delta {
 		content: String,
 	}
@@ -27,7 +27,7 @@ mod chunk {
 
 use chunk::ChatCompletionChunk;
 
-#[derive(Debug, Serialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(tag = "kind", rename_all = "camelCase", content = "message")]
 pub enum SseMessage {
 	Message(String),
@@ -48,8 +48,12 @@ pub fn bytes_to_sse_message(bytes: &[u8]) -> Option<SseMessage> {
 		return None;
 	}
 
-	let i = bytes.iter().position(|&x| x == b'{')?;
-	let bytes = bytes.get(i..)?;
+	let bytes = if let Some(rest) = bytes.strip_prefix(b"data: ") {
+		rest
+	} else {
+		bytes
+	};
+
 	let content = serde_json::from_slice::<ChatCompletionChunk>(bytes)
 		.ok()?
 		.content()?;

@@ -3,37 +3,29 @@
 use axum::{
 	body::Body,
 	http::{self, Request, StatusCode},
-	response::Response,
 };
-use http_body_util::BodyExt; // for `collect`
 use mockall::{mock, predicate};
 use serde_json::json;
 use sqlx::PgPool;
-use tower::ServiceExt; // for `call`, `oneshot`, and `ready`
+use tower::ServiceExt as _;
 use youtube_summarizer_server::{
 	error::ErrorMessage,
 	web::{
-		clients::{CompletionClient, completions::stream::SseMessage},
+		clients::CompletionClient,
 		routes::routes,
 		services::{transcript::get_transcript_by_url, youtube::MockYtService},
 		utils::YTUrl,
 	},
 };
 
+use crate::common::body_to_string;
+
+mod common;
+
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-async fn body_to_string(res: Response) -> Result<String> {
-	let bytes = res
-		.into_body()
-		.collect()
-		.await?
-		.to_bytes()
-		.to_vec();
-	Ok(String::from_utf8(bytes)?)
-}
-
 #[sqlx::test]
-fn can_build_router(pool: PgPool) -> Result<()> {
+async fn can_build_router(pool: PgPool) -> Result<()> {
 	let routes = routes(pool);
 
 	let response = routes
@@ -91,7 +83,7 @@ mock! {
 	#[allow(refining_impl_trait, reason="this is for tests and for some reason it doesn't like impls in returns")]
 	impl CompletionClient for Completion {
 		fn post(&self, prompt: &str, text: &str) -> impl Future<Output = youtube_summarizer_server::error::Result<String>> + Send;
-		fn post_stream(self, prompt: &str, text: &str) -> impl Future<Output = youtube_summarizer_server::error::Result<core::pin::Pin<Box<dyn futures::Stream<Item = SseMessage> + Send>>>> + Send;
+		fn post_stream(self, prompt: &str, text: &str) -> impl Future<Output = youtube_summarizer_server::error::Result<core::pin::Pin<Box<dyn futures::Stream<Item = youtube_summarizer_server::web::clients::completions::stream::SseMessage> + Send>>>> + Send;
 	}
 
 	impl Clone for Completion {
@@ -99,9 +91,8 @@ mock! {
 	}
 }
 
-// TODO test streams
-
 const TEST_ID: &str = "TEST_ID";
+
 #[sqlx::test(fixtures(path = "fixtures", scripts("video_with_summary")))]
 async fn should_submit_feedback_for_existing_summary(pool: PgPool) -> Result<()> {
 	let message = "rust is a must";
