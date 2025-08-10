@@ -40,12 +40,9 @@ pub async fn summarize_by_url_stream(
 			.summary
 			.expect("Summary should not be null");
 		let stream = futures::stream::iter(
-			summary
-				// TODO chunk data to 4-8KiB for better perf
-				.chars()
-				.collect::<Vec<_>>()
+			chunk_text_by_chars(&summary, 4_000, 0)
 				.into_iter()
-				.map(|c| SseMessage::Message(c.into()).into()),
+				.map(|s| SseMessage::Message(s).into()),
 		)
 		.chain(futures::stream::once(async { SseMessage::Done.into() }));
 		return Ok(Box::pin(stream));
@@ -168,56 +165,46 @@ async fn multi_chunk_summary_stream(
 		.await
 }
 
+fn chunk_items<T>(xs: &[T], chunk: usize, overlap: usize) -> Vec<&[T]> {
+	let step = if let Some(step) = chunk.checked_sub(overlap)
+		&& (1..xs.len()).contains(&step)
+	{
+		step
+	} else {
+		return vec![xs];
+	};
+
+	let max_start = xs.len().saturating_sub(chunk);
+	let max_step = max_start.div_ceil(step);
+	(0..=max_step)
+		.map(|i| i * step)
+		.map(|start| start..(start + chunk).min(xs.len()))
+		.map(|r| {
+			xs.get(r)
+				.expect("chunk should be in range")
+		})
+		.collect()
+}
+
 /// overlapping chunks of text by `size` words
 /// returns 1 chunk if `size` <= `overlap`
 fn chunk_text_by_words(s: &str, size: usize, overlap: usize) -> Vec<String> {
-	let offset = if let Some(offset) = size.checked_sub(overlap)
-		&& offset > 0
-	{
-		offset
-	} else {
-		return vec![s.into()];
-	};
-
 	let words = s
 		.split_ascii_whitespace()
 		.collect::<Vec<_>>();
 
-	if words.len() <= size {
-		return vec![s.into()];
-	}
+	chunk_items(&words, size, overlap)
+		.into_iter()
+		.map(|chunk| chunk.join(" "))
+		.collect()
+}
 
-	let chunks = words
-		.len()
-		.checked_div(offset)
-		.expect("offset should never be 0")
-		+ 1;
+fn chunk_text_by_chars(s: &str, size: usize, overlap: usize) -> Vec<String> {
+	let words = s.chars().collect::<Vec<_>>();
 
-	tracing::debug!("{} chunks in func", chunks);
-
-	(0..chunks)
-		.map(|i| i.saturating_mul(offset))
-		.map(|start| {
-			start
-				..(start
-					.saturating_add(size)
-					.min(words.len()))
-		})
-		.scan(false, |done, r| {
-			(!*done).then(|| {
-				if r.end >= words.len() {
-					*done = true;
-				}
-				r
-			})
-		})
-		.map(|r| {
-			words
-				.get(r.clone())
-				.expect("chunked text should be in range")
-				.to_vec()
-				.join(" ")
-		})
+	chunk_items(&words, size, overlap)
+		.into_iter()
+		.map(|chunk| chunk.iter().collect())
 		.collect()
 }
 
