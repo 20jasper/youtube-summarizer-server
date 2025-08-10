@@ -27,7 +27,7 @@ mod chunk {
 
 use chunk::ChatCompletionChunk;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone, PartialEq, Eq)]
 #[serde(tag = "kind", rename_all = "camelCase", content = "message")]
 pub enum SseMessage {
 	Message(String),
@@ -43,7 +43,7 @@ impl From<SseMessage> for sse::Event {
 	}
 }
 
-pub fn bytes_to_event(bytes: &[u8]) -> Option<sse::Event> {
+pub fn bytes_to_sse_message(bytes: &[u8]) -> Option<SseMessage> {
 	if bytes.is_empty() {
 		return None;
 	}
@@ -58,5 +58,5 @@ pub fn bytes_to_event(bytes: &[u8]) -> Option<sse::Event> {
 		return None;
 	}
 
-	Some(SseMessage::Message(content).into())
+	Some(SseMessage::Message(content))
 }

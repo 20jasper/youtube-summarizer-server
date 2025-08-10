@@ -1,42 +1,56 @@
-use core::pin::Pin;
-
 use crate::{
 	error::Result,
 	prompts::{CHUNKED_COMBINE_TEMPLATE, CHUNKED_SUMMARY_TEMPLATE, ONESHOT_SUMMARY_TEMPLATE},
 	web::{
-		clients::CompletionClient,
+		clients::{CompletionClient, completions::stream::SseMessage},
 		services::{transcript::get_transcript_by_url, youtube::YtService},
 		utils::YTUrl,
 	},
 };
 use axum::response::sse;
-use futures::Stream;
+use core::pin::Pin;
+use futures::{Stream, StreamExt as _};
 use sqlx::PgPool;
-use tokio::task::JoinSet;
+use std::sync::Arc;
+use tokio::{
+	sync::{Mutex, mpsc},
+	task::JoinSet,
+};
+use tokio_stream::wrappers::ReceiverStream;
 
-// TODO fix caching!!!
 pub async fn summarize_by_url_stream(
 	url: &YTUrl,
-	pool: &PgPool,
+	pool: PgPool,
 	yt_service: impl YtService + Send + Sync + 'static,
 	client: impl CompletionClient + Clone + Send + Sync + 'static,
 ) -> Result<Pin<Box<dyn Stream<Item = sse::Event> + Send>>> {
-	// let summary = if let Ok(row) = sqlx::query!(
-	// 	r"
-	// 		SELECT summary
-	// 		FROM videos
-	// 		WHERE video_id = $1 AND summary IS NOT NULL
-	// 	",
-	// 	url.id()
-	// )
-	// .fetch_one(pool)
-	// .await
-	// {
-	// 	tracing::debug!("found summary in database");
-	// 	row.summary
-	// 		.expect("Summary should not be null")
-	// } else {
-	let transcript = get_transcript_by_url(url, pool, yt_service).await?;
+	if let Ok(row) = sqlx::query!(
+		r"
+			SELECT summary
+			FROM videos
+			WHERE video_id = $1 AND summary IS NOT NULL
+		",
+		url.id()
+	)
+	.fetch_one(&pool)
+	.await
+	{
+		tracing::debug!("found summary in database");
+		let summary = row
+			.summary
+			.expect("Summary should not be null");
+		let stream = futures::stream::iter(
+			summary
+				// TODO chunk data to 4-8KiB for better perf
+				.chars()
+				.collect::<Vec<_>>()
+				.into_iter()
+				.map(|c| SseMessage::Message(c.into()).into()),
+		)
+		.chain(futures::stream::once(async { SseMessage::Done.into() }));
+		return Ok(Box::pin(stream));
+	}
+	let transcript = get_transcript_by_url(url, &pool, yt_service).await?;
 	tracing::debug!(
 		"transcript len: {}",
 		transcript
@@ -44,28 +58,56 @@ pub async fn summarize_by_url_stream(
 			.count()
 	);
 
-	let summary = summary(client, &transcript, 10_000, 100).await?;
+	let mut summary_stream = summary(client, &transcript, 10_000, 100).await?;
 
-	tracing::debug!("summarized transcript");
+	let (tx, rx) = mpsc::channel::<sse::Event>(100);
+	let cache = Arc::new(Mutex::new(String::with_capacity(2000)));
 
-	// sqlx::query!(
-	// 	"UPDATE videos SET summary = $1 WHERE video_id = $2",
-	// 	summary,
-	// 	url.id(),
-	// )
-	// .execute(pool)
-	// .await?;
+	let id = url.id().to_owned();
 
-	// 	summary
-	// };
+	tokio::spawn(async move {
+		while let Some(msg) = summary_stream.next().await {
+			// TODO is this just client disconnect?
+			if let Err(e) = tx.send(msg.clone().into()).await {
+				tracing::error!("error sending message {e:?}");
+				break;
+			}
+			match msg {
+				SseMessage::Message(s) => {
+					cache.lock().await.push_str(s.as_str());
+				}
+				SseMessage::Done => break,
+				SseMessage::Error => {
+					// TODO include more info in this
+					tracing::error!("error in SSE stream");
+				}
+			}
+		}
 
-	Ok(summary)
+		let summary = { cache.lock().await.clone() };
+		let res = sqlx::query!(
+			"UPDATE videos SET summary = $1 WHERE video_id = $2",
+			summary,
+			id,
+		)
+		.execute(&pool)
+		.await;
+		if let Ok(res) = res
+			&& res.rows_affected() == 1
+		{
+			tracing::info!("saved summary to database");
+		} else {
+			tracing::error!("failed to save summary to database");
+		}
+	});
+
+	Ok(Box::pin(ReceiverStream::new(rx)))
 }
 
 async fn oneshot_summary_stream(
 	client: impl CompletionClient,
 	transcript: &str,
-) -> Result<Pin<Box<dyn Stream<Item = sse::Event> + Send>>> {
+) -> Result<Pin<Box<dyn Stream<Item = SseMessage> + Send>>> {
 	client
 		.post_stream(ONESHOT_SUMMARY_TEMPLATE, transcript)
 		.await
@@ -82,7 +124,7 @@ async fn summary(
 	transcript: &str,
 	size: usize,
 	overlap: usize,
-) -> Result<Pin<Box<dyn Stream<Item = sse::Event> + Send>>> {
+) -> Result<Pin<Box<dyn Stream<Item = SseMessage> + Send>>> {
 	let chunks = chunk_text_by_words(transcript, size, overlap);
 	let len = chunks.len();
 
@@ -100,7 +142,7 @@ async fn summary(
 async fn multi_chunk_summary_stream(
 	client: impl CompletionClient + Clone + Send + Sync + 'static,
 	chunks: Vec<String>,
-) -> Result<Pin<Box<dyn Stream<Item = sse::Event> + Send>>> {
+) -> Result<Pin<Box<dyn Stream<Item = SseMessage> + Send>>> {
 	let len = chunks.len();
 
 	let summaries = chunks

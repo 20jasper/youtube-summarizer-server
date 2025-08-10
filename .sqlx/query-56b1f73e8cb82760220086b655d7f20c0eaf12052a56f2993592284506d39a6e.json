@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n\t\t\tSELECT summary\n\t\t\tFROM videos\n\t\t\tWHERE video_id = $1 AND summary IS NOT NULL\n\t\t",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "summary",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "56b1f73e8cb82760220086b655d7f20c0eaf12052a56f2993592284506d39a6e"
+}
