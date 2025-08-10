@@ -4,42 +4,50 @@
 import * as smd from "https://cdn.jsdelivr.net/npm/streaming-markdown/smd.min.js";
 
 /**
- * streams markdown from `url` into `el`
+ * Streams markdown from `url` into `el`.
  *
  * @param {HTMLElement} el
  * @param {string} url
+ * @param {{ onOpen?: () => void, onDone?: () => void, onError?: (err: any) => void }} [opts]
+ * @returns {EventSource}
  */
-export function attachEventSource(el, url) {
+export function attachEventSource(el, url, opts = {}) {
   const renderer = smd.default_renderer(el);
   const parser = smd.parser(renderer);
 
   const evtSource = new EventSource(url);
 
   evtSource.addEventListener("message", (event) => {
-    console.log(event);
     const data = JSON.parse(event.data);
     const { kind, message } = data;
     switch (kind) {
-      case "done":
-        console.log("Stream done");
+      case "done": {
         evtSource.close();
+        opts.onDone?.();
         break;
-      case "message":
-        console.log("Stream message:", data);
+      }
+      case "message": {
         smd.parser_write(parser, message ?? "");
         break;
-      case "error":
+      }
+      case "error": {
         console.error("Stream error:", data);
+        opts.onError?.(data);
         break;
-      default:
-        throw new Error("Unknown event kind: " + kind);
+      }
+      default: {
+        console.warn("Unknown event kind:", kind);
+      }
     }
   });
 
   evtSource.onerror = (err) => {
     console.error("EventSource failed:", err);
+    opts.onError?.(err);
   };
   evtSource.onopen = () => {
-    console.log("Connection opened");
+    opts.onOpen?.();
   };
+
+  return evtSource;
 }
