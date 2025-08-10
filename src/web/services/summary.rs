@@ -174,10 +174,10 @@ fn chunk_items<T>(xs: &[T], chunk: usize, overlap: usize) -> Vec<&[T]> {
 		return vec![xs];
 	};
 
-	let max_start = xs.len().saturating_sub(chunk);
-	let max_step = max_start.div_ceil(step);
-	(0..=max_step)
-		.map(|i| i * step)
+	let chunks = (xs.len() - chunk).div_ceil(step) + 1;
+	(0..xs.len())
+		.step_by(step)
+		.take(chunks)
 		.map(|start| start..(start + chunk).min(xs.len()))
 		.map(|r| {
 			xs.get(r)
