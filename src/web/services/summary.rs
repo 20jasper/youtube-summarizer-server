@@ -2,8 +2,8 @@ use crate::{
 	error::Result,
 	prompts::{CHUNKED_COMBINE_TEMPLATE, CHUNKED_SUMMARY_TEMPLATE, ONESHOT_SUMMARY_TEMPLATE},
 	web::{
-		clients::{CompletionClient, completions::stream::SseMessage},
-		services::{transcript::get_transcript_by_url, youtube::YtService},
+		clients::{CompletionClient, completions::stream::SseMessage, yt_dlp::VideoMetaData},
+		services::{metadata::get_metadata_by_url, youtube::YtService},
 		utils::YTUrl,
 	},
 };
@@ -47,15 +47,15 @@ pub async fn summarize_by_url_stream(
 		.chain(futures::stream::once(async { SseMessage::Done.into() }));
 		return Ok(Box::pin(stream));
 	}
-	let transcript = get_transcript_by_url(url, &pool, yt_service).await?;
+	let VideoMetaData { captions, .. } = get_metadata_by_url(url, &pool, yt_service).await?;
 	tracing::debug!(
 		"transcript len: {}",
-		transcript
+		captions
 			.split_ascii_whitespace()
 			.count()
 	);
 
-	let mut summary_stream = summary(client, &transcript, 10_000, 100).await?;
+	let mut summary_stream = summary(client, &captions, 10_000, 100).await?;
 
 	let (tx, rx) = mpsc::channel::<sse::Event>(100);
 	let cache = Arc::new(Mutex::new(String::with_capacity(2000)));
@@ -343,7 +343,7 @@ mod tests {
 			)
 			.collect();
 
-		combined == [input]
+		combined.concat() == input
 	}
 
 	#[quickcheck_macros::quickcheck]

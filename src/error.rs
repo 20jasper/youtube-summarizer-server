@@ -23,6 +23,7 @@ pub enum Error {
 	EnvParse(Infallible),
 
 	CaptionsUnavailable(YTUrl),
+	MalformedOrMissingYtMetadata(YTUrl),
 	NotFound,
 
 	#[from]
@@ -84,6 +85,10 @@ impl IntoResponse for Error {
 			E::CaptionsUnavailable(url) => error_response(
 				StatusCode::NOT_FOUND,
 				format!("Captions not available for URL: {}", url.as_str()),
+			),
+			E::MalformedOrMissingYtMetadata(url) => error_response(
+				StatusCode::NOT_FOUND,
+				format!("Failed to parse YouTube metadata: {}", url.as_str()),
 			),
 			E::NotFound => error_response(StatusCode::NOT_FOUND, "Not Found"),
 			E::Sqlx(_) | E::Reqwest(_) | E::Join(_) | E::Io(_) | E::Custom(_) => {

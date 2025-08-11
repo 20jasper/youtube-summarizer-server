@@ -116,5 +116,4 @@ verbose_file_reads = "warn"
 unnecessary_map_or = "warn"
 
 # complexity
-manual_is_multiple_of = "warn"
 useless_concat = "warn"
