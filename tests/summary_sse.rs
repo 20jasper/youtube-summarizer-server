@@ -46,7 +46,7 @@ async fn should_stream_cached_summary_and_end(
 		.await?;
 	let summary = row
 		.summary
-		.expect("fixture should have summary");
+		.ok_or("fixture should have summary")?;
 
 	assert_eq!(summary, SUMMARY);
 
@@ -105,7 +105,7 @@ async fn should_call_client_once_then_cache(
 	.await?;
 	let summary = row
 		.summary
-		.expect("fixture should have summary");
+		.ok_or("fixture should have summary")?;
 
 	assert_eq!(summary, texts.join(""));
 

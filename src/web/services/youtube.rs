@@ -1,4 +1,5 @@
 use crate::web::clients::YtdlpClientBuilder;
+use crate::web::clients::yt_dlp::VideoMetaData;
 use crate::web::utils::YTUrl;
 use crate::{
 	error::{Error, Result},
@@ -9,7 +10,7 @@ use reqwest::Url;
 
 #[automock]
 pub trait YtService {
-	fn fetch_captions(&self, url: &YTUrl) -> Result<String>;
+	fn fetch_metadata(&self, url: &YTUrl) -> Result<VideoMetaData>;
 }
 
 pub struct YtDlpService {
@@ -40,13 +41,13 @@ impl YtDlpService {
 }
 
 impl YtService for YtDlpService {
-	fn fetch_captions(&self, url: &YTUrl) -> Result<String> {
+	fn fetch_metadata(&self, url: &YTUrl) -> Result<VideoMetaData> {
 		YtdlpClientBuilder::default()
 			.proxy(self.proxy.clone())
 			.retries(self.retries)
 			.download_subtitles(true)
 			.build()
 			.unwrap()
-			.request(url)
+			.fetch_metadata(url)
 	}
 }

@@ -11,9 +11,12 @@ use tower::ServiceExt as _;
 use youtube_summarizer_server::{
 	error::ErrorMessage,
 	web::{
-		clients::CompletionClient,
+		clients::{
+			CompletionClient,
+			yt_dlp::{VideoMetaData, metadata::VideoInfo},
+		},
 		routes::routes,
-		services::{transcript::get_transcript_by_url, youtube::MockYtService},
+		services::{metadata::get_metadata_by_url, youtube::MockYtService},
 		utils::YTUrl,
 	},
 };
@@ -27,7 +30,6 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[sqlx::test]
 async fn can_build_router(pool: PgPool) -> Result<()> {
 	let routes = routes(pool);
-
 	let response = routes
 		.oneshot(
 			Request::builder()
@@ -51,29 +53,66 @@ const CLEAN_VTT: &str =
 	"[Music] you know what's really not fun recording an entire video for 30 minutes and then";
 
 #[sqlx::test]
-async fn should_get_and_cache_transcript(pool: PgPool) -> Result<()> {
+async fn should_get_and_cache_metadata(pool: PgPool) -> Result<()> {
 	let url = YTUrl::try_from(
 		"https://www.youtube.com/watch?v=DjcC6p_8fpE&pp=ygUWamFjb2IgYXNwZXIgdHlwZXNjcmlwdA%3D%3D",
 	)?;
-
+	let mock_metadata = VideoInfo {
+		title: "Test Video".to_string(),
+		duration: Some(300.0),
+		description: None,
+		tags: vec![],
+		thumbnails: vec![],
+		chapters: vec![],
+		heatmap: vec![],
+		channel_id: None,
+	};
 	let mut yt_service = MockYtService::new();
+	let info_clone = mock_metadata.clone();
 	yt_service
-		.expect_fetch_captions()
+		.expect_fetch_metadata()
 		.with(predicate::eq(url.clone()))
 		.times(1)
-		.returning(|_url| Ok(VTT.to_owned()));
+		.returning(move |_url| {
+			Ok(VideoMetaData {
+				metadata: info_clone.clone(),
+				captions: VTT.to_owned(),
+			})
+		});
 
-	let transcript = get_transcript_by_url(&url, &pool, yt_service).await?;
-	assert_eq!(transcript, CLEAN_VTT);
+	let VideoMetaData { captions, metadata } = get_metadata_by_url(&url, &pool, yt_service).await?;
+	assert_eq!(captions, CLEAN_VTT);
+	assert_eq!(metadata, mock_metadata);
 
-	// should be stored in DB
+	let row = sqlx::query!(
+		"SELECT metadata, subtitles, title FROM videos WHERE video_id = $1",
+		url.id()
+	)
+	.fetch_one(&pool)
+	.await?;
+	let stored: VideoInfo = serde_json::from_value(row.metadata)?;
+	assert_eq!(stored, mock_metadata);
+	assert_eq!(row.subtitles, CLEAN_VTT.to_string());
+	assert_eq!(row.title, mock_metadata.title);
+
 	let mut yt_service = MockYtService::new();
 	yt_service
-		.expect_fetch_captions()
+		.expect_fetch_metadata()
 		.times(0);
 
-	let transcript = get_transcript_by_url(&url, &pool, yt_service).await?;
-	assert_eq!(transcript, CLEAN_VTT);
+	let VideoMetaData { captions, metadata } = get_metadata_by_url(&url, &pool, yt_service).await?;
+	assert_eq!(captions, CLEAN_VTT);
+	assert_eq!(metadata, mock_metadata);
+
+	let row = sqlx::query!(
+		"SELECT metadata, title FROM videos WHERE video_id = $1",
+		url.id()
+	)
+	.fetch_one(&pool)
+	.await?;
+	let stored: VideoInfo = serde_json::from_value(row.metadata)?;
+	assert_eq!(stored, mock_metadata);
+	assert_eq!(row.title, mock_metadata.title);
 
 	Ok(())
 }
@@ -120,13 +159,13 @@ async fn should_submit_feedback_for_existing_summary(pool: PgPool) -> Result<()>
 	Ok(())
 }
 
-async fn transcript_error(pool: PgPool, url: &str, error_message: &str) -> Result<()> {
+async fn metadata_error(pool: PgPool, url: &str, error_message: &str) -> Result<()> {
 	let routes = routes(pool);
 
 	let response = routes
 		.oneshot(
 			Request::builder()
-				.uri(format!("/transcript?url={url}"))
+				.uri(format!("/metadata?url={url}"))
 				.body(Body::empty())?,
 		)
 		.await?;
@@ -148,12 +187,12 @@ async fn transcript_error(pool: PgPool, url: &str, error_message: &str) -> Resul
 async fn invalid_url(pool: PgPool) -> Result<()> {
 	let url = "uhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh";
 	let error_message = "Invalid URL";
-	transcript_error(pool, url, error_message).await
+	metadata_error(pool, url, error_message).await
 }
 
 #[sqlx::test]
 async fn unsupported_url(pool: PgPool) -> Result<()> {
 	let url = "https://www.rustisamust.com/watch";
 	let error_message = "Unsupported URL";
-	transcript_error(pool, url, error_message).await
+	metadata_error(pool, url, error_message).await
 }

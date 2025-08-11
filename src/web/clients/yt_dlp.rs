@@ -3,13 +3,22 @@
 //! Abstracts implementation details like file system reads
 
 mod cache;
+pub mod metadata;
 
-use crate::error::Result;
+use crate::error::{Error, Result};
+use crate::web::clients::yt_dlp::cache::Artifact;
+use crate::web::clients::yt_dlp::metadata::VideoInfo;
 use crate::web::utils::YTUrl;
 use derive_builder::Builder;
 use reqwest::Url;
 use std::process::Command;
 use std::process::Output;
+
+#[derive(Debug, Clone)]
+pub struct VideoMetaData {
+	pub metadata: VideoInfo,
+	pub captions: String,
+}
 
 const FLAG_NO_SIMULATE: &str = "--no-simulate";
 const FLAG_SKIP_DOWNLOAD: &str = "--skip-download";
@@ -21,6 +30,7 @@ const FLAG_WRITE_SUBS: &str = "--write-subs";
 const FLAG_WRITE_AUTO_SUBS: &str = "--write-auto-subs";
 const FLAG_SUB_LANGS: &str = "--sub-langs";
 const FLAG_SUB_FORMAT: &str = "--sub-format";
+const FLAG_WRITE_INFO_JSON: &str = "--write-info-json";
 
 #[derive(Clone, Debug, Builder, PartialEq)]
 pub struct YtdlpClient {
@@ -48,7 +58,7 @@ impl YtdlpClient {
 			.arg(self.proxy.as_str())
 			.arg(FLAG_PATHS)
 			.arg(
-				cache::get_artifact_dir()
+				Artifact::dir_from_env()
 					.as_path()
 					.to_str()
 					.expect("path should always be valid utf8"),
@@ -66,15 +76,15 @@ impl YtdlpClient {
 		cmd
 	}
 
-	pub fn request(&self, url: &YTUrl) -> Result<String> {
+	pub fn fetch_metadata(&self, url: &YTUrl) -> Result<VideoMetaData> {
 		let mut cmd = self.base_cmd();
-
-		cmd.arg(url.as_str());
+		cmd.arg(FLAG_WRITE_INFO_JSON)
+			.arg(url.as_str());
 
 		let Output { status, stderr, .. } = cmd.output()?;
 		if !status.success() {
 			return Err(format!(
-				"get transcript failed with status code {}, {:?}",
+				"get video data failed with status code {}, {:?}",
 				status
 					.code()
 					.ok_or("could not get status code")?,
@@ -83,6 +93,10 @@ impl YtdlpClient {
 			.into());
 		}
 
-		cache::extract(url)
+		let captions = Artifact::Captions.extract(url)?;
+		let metadata: VideoInfo = serde_json::from_str(&Artifact::Metadata.extract(url)?)
+			.map_err(|_| Error::MalformedOrMissingYtMetadata(url.clone()))?;
+
+		Ok(VideoMetaData { metadata, captions })
 	}
 }

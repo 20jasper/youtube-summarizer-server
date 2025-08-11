@@ -1,7 +1,9 @@
 use crate::error::{Error, Result};
 use crate::web::clients::DeepInfraClient;
+use crate::web::clients::yt_dlp::VideoMetaData;
+use crate::web::constants::{METADATA_JSON_KEY, TRANSCRIPT_JSON_KEY};
+use crate::web::services::metadata;
 use crate::web::services::summary::summarize_by_url_stream;
-use crate::web::services::transcript;
 use crate::web::services::youtube::YtDlpService;
 use crate::web::utils::YTUrl;
 use axum::extract::State;
@@ -16,27 +18,22 @@ use sqlx::PgPool;
 use tracing::instrument;
 
 #[derive(Deserialize)]
-struct TranscriptParams {
+struct MetaDataParams {
 	url: String,
 }
 
 #[instrument(skip(pool), fields(url, video_id = %YTUrl::try_from(url.as_str())?.id()))]
-async fn transcript(
-	Query(TranscriptParams { url }): Query<TranscriptParams>,
+async fn metadata(
+	Query(MetaDataParams { url }): Query<MetaDataParams>,
 	State(pool): State<PgPool>,
 ) -> Result<(StatusCode, Json<Value>)> {
-	let transcript = transcript::get_transcript_by_url(
-		&url.as_str().try_into()?,
-		&pool,
-		YtDlpService::from_env()?,
-	)
-	.await?;
+	let VideoMetaData { captions, metadata } =
+		metadata::get_metadata_by_url(&url.as_str().try_into()?, &pool, YtDlpService::from_env()?)
+			.await?;
 	Ok((
 		StatusCode::OK,
 		Json(json!(
-				{
-					"transcript": transcript
-				}
+				{ TRANSCRIPT_JSON_KEY: captions, METADATA_JSON_KEY: metadata }
 		)),
 	))
 }
@@ -117,5 +114,5 @@ pub fn routes() -> Router<PgPool> {
 	Router::new()
 		.route("/summary", get(summarize))
 		.route("/summary/rating", post(rate))
-		.route("/transcript", get(transcript))
+		.route("/metadata", get(metadata))
 }

@@ -1,12 +1,17 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT subtitles FROM videos WHERE video_id = $1",
+  "query": "SELECT subtitles, metadata FROM videos WHERE video_id = $1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
         "name": "subtitles",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "metadata",
+        "type_info": "Jsonb"
       }
     ],
     "parameters": {
@@ -15,8 +20,9 @@
       ]
     },
     "nullable": [
+      false,
       false
     ]
   },
-  "hash": "190971bf40cb1a3ba419bdbb3eede95c27b211281d3c5095771c971a3eda434a"
+  "hash": "bc2492da1ac54b6027166515d746645bcae2497fccc9bbc9d584f6005c36fe95"
 }
