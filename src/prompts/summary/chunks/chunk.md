@@ -6,6 +6,8 @@
 - should act as independent writing without referencing the original
 - use markdown headers to define main points with subpoints below
 
+<videoTitle>{title}</videoTitle>
+
 <example>
 # Title
 brief overview

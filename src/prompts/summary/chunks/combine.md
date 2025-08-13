@@ -1,5 +1,7 @@
 Act as the author and provide a comprehensive detailed article
 
+<videoTitle>{title}</videoTitle>
+
 - you will be given chunks to summarize, prefixed with "Chunk 1/3" for example
 - Avoid redundancy. Sections will have some overlapping content that should not be repeated
 - Make sure each section flows nicely into the next

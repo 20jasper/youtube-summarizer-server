@@ -69,8 +69,7 @@ async fn should_call_client_once_then_cache(
 		.try_into()?;
 
 	let mut client = MockCompletion::new();
-	let mut child = MockCompletion::new();
-	child
+	client
 		.expect_post_stream()
 		.times(1)
 		.returning(move |_, _| {
@@ -83,10 +82,6 @@ async fn should_call_client_once_then_cache(
 				}
 			})
 		});
-	client
-		.expect_clone()
-		.times(1)
-		.return_once(move || child);
 
 	let stream = summarize_by_url_stream(&url, pool.clone(), MockYtService::new(), client).await?;
 	let events: Vec<sse::Event> = stream.collect().await;

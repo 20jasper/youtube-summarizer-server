@@ -1,5 +1,7 @@
 Act as the author and provide a comprehensive detailed article
 
+<videoTitle>{title}</videoTitle>
+
 - Use this markdown format
   - Do not bold or italicize text
   - Start with an h1 only
