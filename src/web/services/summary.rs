@@ -1,6 +1,6 @@
 use crate::{
 	error::Result,
-	prompts::{CHUNKED_COMBINE_TEMPLATE, CHUNKED_SUMMARY_TEMPLATE, ONESHOT_SUMMARY_TEMPLATE},
+	prompts::PromptContext,
 	web::{
 		clients::{CompletionClient, completions::stream::SseMessage, yt_dlp::VideoMetaData},
 		services::{metadata::get_metadata_by_url, youtube::YtService},
@@ -47,15 +47,21 @@ pub async fn summarize_by_url_stream(
 		.chain(futures::stream::once(async { SseMessage::Done.into() }));
 		return Ok(Box::pin(stream));
 	}
-	let VideoMetaData { captions, .. } = get_metadata_by_url(url, &pool, yt_service).await?;
+	let VideoMetaData { captions, metadata } = get_metadata_by_url(url, &pool, yt_service).await?;
 	tracing::debug!(
 		"transcript len: {}",
 		captions
 			.split_ascii_whitespace()
 			.count()
 	);
-
-	let mut summary_stream = summary(client, &captions, 10_000, 100).await?;
+	let mut summary_stream = summary(
+		client,
+		&captions,
+		10_000,
+		100,
+		&PromptContext::new(metadata.title),
+	)
+	.await?;
 
 	let (tx, rx) = mpsc::channel::<sse::Event>(100);
 	let cache = Arc::new(Mutex::new(String::with_capacity(2000)));
@@ -103,16 +109,21 @@ pub async fn summarize_by_url_stream(
 
 async fn oneshot_summary_stream(
 	client: impl CompletionClient,
+	ctx: &PromptContext,
 	transcript: &str,
 ) -> Result<Pin<Box<dyn Stream<Item = SseMessage> + Send>>> {
 	client
-		.post_stream(ONESHOT_SUMMARY_TEMPLATE, transcript)
+		.post_stream(&ctx.oneshot_prompt(), transcript)
 		.await
 }
 
-async fn chunk_summary_oneshot(client: impl CompletionClient, chunk: String) -> Result<String> {
+async fn chunk_summary_oneshot(
+	client: impl CompletionClient,
+	ctx: PromptContext,
+	chunk: String,
+) -> Result<String> {
 	client
-		.post(CHUNKED_SUMMARY_TEMPLATE, &chunk)
+		.post(&ctx.chunk_prompt(), &chunk)
 		.await
 }
 
@@ -121,26 +132,28 @@ async fn summary(
 	transcript: &str,
 	size: usize,
 	overlap: usize,
+	ctx: &PromptContext,
 ) -> Result<Pin<Box<dyn Stream<Item = SseMessage> + Send>>> {
 	let chunks = chunk_text_by_words(transcript, size, overlap);
 	tracing::debug!("{} chunks", chunks.len());
 
 	if chunks.len() == 1 {
 		tracing::debug!("using oneshot prompt");
-		return oneshot_summary_stream(client.clone(), transcript).await;
+		return oneshot_summary_stream(client, ctx, transcript).await;
 	}
 	tracing::debug!("using chunked prompts");
 
-	multi_chunk_summary_stream(client, chunks).await
+	multi_chunk_summary_stream(client, chunks, ctx).await
 }
 
 async fn multi_chunk_summary_stream(
 	client: impl CompletionClient + Clone + Send + Sync + 'static,
 	chunks: Vec<String>,
+	ctx: &PromptContext,
 ) -> Result<Pin<Box<dyn Stream<Item = SseMessage> + Send>>> {
 	let summaries = chunks
 		.into_iter()
-		.map(|x| chunk_summary_oneshot(client.clone(), x))
+		.map(|x| chunk_summary_oneshot(client.clone(), ctx.clone(), x))
 		.collect::<JoinSet<_>>()
 		.join_all()
 		.await
@@ -157,7 +170,7 @@ async fn multi_chunk_summary_stream(
 	tracing::debug!(combined);
 
 	client
-		.post_stream(CHUNKED_COMBINE_TEMPLATE, &combined)
+		.post_stream(&ctx.combine_prompt(), &combined)
 		.await
 }
 
