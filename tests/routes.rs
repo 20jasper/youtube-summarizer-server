@@ -159,13 +159,13 @@ async fn should_submit_feedback_for_existing_summary(pool: PgPool) -> Result<()>
 	Ok(())
 }
 
-async fn metadata_error(pool: PgPool, url: &str, error_message: &str) -> Result<()> {
+async fn summary_error(pool: PgPool, url: &str, error_message: &str) -> Result<()> {
 	let routes = routes(pool);
 
 	let response = routes
 		.oneshot(
 			Request::builder()
-				.uri(format!("/metadata?url={url}"))
+				.uri(format!("/summary?url={url}"))
 				.body(Body::empty())?,
 		)
 		.await?;
@@ -187,12 +187,12 @@ async fn metadata_error(pool: PgPool, url: &str, error_message: &str) -> Result<
 async fn invalid_url(pool: PgPool) -> Result<()> {
 	let url = "uhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh";
 	let error_message = "Invalid URL";
-	metadata_error(pool, url, error_message).await
+	summary_error(pool, url, error_message).await
 }
 
 #[sqlx::test]
 async fn unsupported_url(pool: PgPool) -> Result<()> {
 	let url = "https://www.rustisamust.com/watch";
 	let error_message = "Unsupported URL";
-	metadata_error(pool, url, error_message).await
+	summary_error(pool, url, error_message).await
 }

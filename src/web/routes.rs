@@ -9,7 +9,7 @@ pub mod transcript;
 pub fn routes(pool: PgPool) -> Router {
 	Router::new()
 		.route("/", get(|| async { "hello world" }))
-		.merge(transcript::routes())
+		.nest("/summary", transcript::routes())
 		// layers run from bottom to top
 		.fallback_service(ServeDir::new(
 			env::var("PUBLIC_DIR").unwrap_or("public/".into()),
