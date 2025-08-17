@@ -2,6 +2,7 @@ use crate::error::{Error, Result};
 use crate::web::clients::completions::stream::{SseMessage, bytes_to_sse_message};
 use crate::web::services::env::load_env;
 use core::future::Future;
+use core::iter;
 use core::pin::Pin;
 use derive_builder::Builder;
 use futures::{Stream, StreamExt};
@@ -9,6 +10,9 @@ use mockall::automock;
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use std::env;
+
+const SYSTEM_ROLE: &str = "system";
+const USER_ROLE: &str = "user";
 
 pub mod stream;
 
@@ -88,11 +92,15 @@ impl CompletionRequestBuilder {
 
 #[automock]
 pub trait CompletionClient {
-	fn post(&self, prompt: &str, text: &str) -> impl Future<Output = Result<String>> + Send;
-	fn post_stream(
+	fn post<'a>(
+		&self,
+		prompt: &'a str,
+		user_messages: &'a [String],
+	) -> impl Future<Output = Result<String>> + Send;
+	fn post_stream<'a>(
 		self,
-		prompt: &str,
-		text: &str,
+		prompt: &'a str,
+		user_messages: &'a [String],
 	) -> impl Future<Output = Result<Pin<Box<dyn Stream<Item = SseMessage> + Send>>>>;
 }
 
@@ -139,20 +147,29 @@ impl DeepInfraClient {
 		DeepInfraClient::build(model, &url, api_key)
 	}
 
-	async fn base_post(&self, prompt: &str, text: &str, stream: bool) -> Result<reqwest::Response> {
+	async fn base_post(
+		&self,
+		prompt: &str,
+		user_messages: &[String],
+		stream: bool,
+	) -> Result<reqwest::Response> {
+		let system = iter::once(Message {
+			role: SYSTEM_ROLE.into(),
+			content: prompt.into(),
+		});
+
+		let user = user_messages
+			.iter()
+			.map(|text| Message {
+				role: USER_ROLE.into(),
+				content: text.clone(),
+			});
+		let messages: Vec<_> = system.chain(user).collect();
+
 		let payload = CompletionRequestBuilder::default()
 			.model(&self.model)
 			.max_tokens(700_u32)
-			.messages([
-				Message {
-					role: "system".into(),
-					content: prompt.into(),
-				},
-				Message {
-					role: "user".into(),
-					content: text.into(),
-				},
-			])
+			.messages(messages)
 			.stream(stream)
 			.build()
 			.map_err(|e| format!("couldn't build completion request: {e:?}"))?;
@@ -169,9 +186,9 @@ impl DeepInfraClient {
 }
 
 impl CompletionClient for DeepInfraClient {
-	async fn post(&self, prompt: &str, text: &str) -> Result<String> {
+	async fn post(&self, prompt: &str, user_messages: &[String]) -> Result<String> {
 		Ok(self
-			.base_post(prompt, text, false)
+			.base_post(prompt, user_messages, false)
 			.await?
 			.json::<oneshot::Response>()
 			.await?
@@ -181,10 +198,10 @@ impl CompletionClient for DeepInfraClient {
 	async fn post_stream(
 		self,
 		prompt: &str,
-		text: &str,
+		user_messages: &[String],
 	) -> Result<Pin<Box<dyn Stream<Item = SseMessage> + Send>>> {
 		Ok(Box::pin(
-			self.base_post(prompt, text, true)
+			self.base_post(prompt, user_messages, true)
 				.await?
 				.bytes_stream()
 				.filter_map(|res| async {

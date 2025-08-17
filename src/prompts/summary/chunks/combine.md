@@ -1,6 +1,6 @@
 Act as the author and provide a comprehensive detailed article
 
-<videoTitle>{title}</videoTitle>
+You will receive metadata and then a transcript. Consider the metadata's relevancy to the transcript. It may be misleading
 
 - you will be given chunks to summarize, prefixed with "Chunk 1/3" for example
 - Avoid redundancy. Sections will have some overlapping content that should not be repeated

@@ -2,26 +2,14 @@
 use axum::response::sse;
 use core::pin::Pin;
 use futures::StreamExt as _;
-use mockall::mock;
 use sqlx::PgPool;
-use youtube_summarizer_server::web::clients::CompletionClient;
 use youtube_summarizer_server::web::clients::completions::stream::SseMessage;
 use youtube_summarizer_server::web::services::summary::summarize_by_url_stream;
 use youtube_summarizer_server::web::services::youtube::MockYtService;
 use youtube_summarizer_server::web::utils::YTUrl;
 
-mock! {
-	pub Completion {}
-	#[allow(refining_impl_trait, reason="this is for tests and for some reason it doesn't like impls in returns")]
-	impl CompletionClient for Completion {
-		fn post(&self, prompt: &str, text: &str) -> impl core::future::Future<Output = youtube_summarizer_server::error::Result<String>> + Send;
-		fn post_stream(self, prompt: &str, text: &str) -> impl core::future::Future<Output = youtube_summarizer_server::error::Result<core::pin::Pin<Box<dyn futures::Stream<Item = youtube_summarizer_server::web::clients::completions::stream::SseMessage> + Send>>>> + Send;
-	}
-
-	impl Clone for Completion {
-		fn clone(&self) -> Self;
-	}
-}
+mod common;
+use common::MockCompletion;
 
 const TEST_ID: &str = "TEST_ID";
 const TRANSCRIPT_NO_SUMMARY: &str = "TEST_ID_NOSUM";
