@@ -2,4 +2,7 @@
   <title>
     {title}
   </title>
+  <chapters>
+    {chapters}
+  </chapters>
 </metadata>

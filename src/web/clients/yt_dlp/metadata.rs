@@ -1,3 +1,5 @@
+use core::fmt::Display;
+
 use serde::{Deserialize, Serialize};
 
 mod de {
@@ -48,9 +50,89 @@ pub struct Chapter {
 	pub end_time: Option<f64>,
 }
 
+impl Display for Chapter {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let start = self.start_time.to_string();
+		let end = self
+			.end_time
+			.map_or_else(|| "end".to_string(), |x| x.to_string());
+		let title = self
+			.title
+			.as_deref()
+			.unwrap_or("Unnamed Chapter");
+
+		write!(f, "{title} - {start}–{end}")
+	}
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct HeatmapPoint {
 	pub start_time: f64,
 	pub end_time: f64,
 	pub value: f64,
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn displays_title_start_and_end() {
+		let chapter = Chapter {
+			title: Some("Garfield".into()),
+			start_time: 12.3,
+			end_time: Some(15.0),
+		};
+		assert_eq!(chapter.to_string(), "Garfield - 12.3–15");
+	}
+
+	#[test]
+	fn displays_missing_title() {
+		let chapter = Chapter {
+			title: None,
+			start_time: 5.0,
+			end_time: Some(7.5),
+		};
+		assert_eq!(chapter.to_string(), "Unnamed Chapter - 5–7.5");
+	}
+
+	#[test]
+	fn displays_missing_end() {
+		let chapter = Chapter {
+			title: Some("Odie".into()),
+			start_time: 15.0,
+			end_time: None,
+		};
+		assert_eq!(chapter.to_string(), "Odie - 15–end");
+	}
+
+	#[test]
+	fn displays_missing_title_and_end() {
+		let chapter = Chapter {
+			title: None,
+			start_time: 12.34,
+			end_time: None,
+		};
+		assert_eq!(chapter.to_string(), "Unnamed Chapter - 12.34–end");
+	}
+
+	#[test]
+	fn displays_zero_length_range() {
+		let chapter = Chapter {
+			title: Some("Jon bakes lasagna".into()),
+			start_time: 42.0,
+			end_time: Some(42.0),
+		};
+		assert_eq!(chapter.to_string(), "Jon bakes lasagna - 42–42");
+	}
+
+	#[test]
+	fn trims_trailing_zeros() {
+		let chapter = Chapter {
+			title: Some("Garfield".into()),
+			start_time: 1.500,
+			end_time: Some(2.0),
+		};
+		assert_eq!(chapter.to_string(), "Garfield - 1.5–2");
+	}
 }
