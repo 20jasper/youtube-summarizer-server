@@ -1,6 +1,6 @@
 Act as the author and provide a comprehensive detailed article
 
-<videoTitle>{title}</videoTitle>
+You will receive metadata and then a transcript. Consider the metadata's relevancy to the transcript. It may be misleading
 
 - Use this markdown format
   - Do not bold or italicize text

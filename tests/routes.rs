@@ -4,17 +4,14 @@ use axum::{
 	body::Body,
 	http::{self, Request, StatusCode},
 };
-use mockall::{mock, predicate};
+use mockall::predicate;
 use serde_json::json;
 use sqlx::PgPool;
 use tower::ServiceExt as _;
 use youtube_summarizer_server::{
 	error::ErrorMessage,
 	web::{
-		clients::{
-			CompletionClient,
-			yt_dlp::{VideoMetaData, metadata::VideoInfo},
-		},
+		clients::yt_dlp::{VideoMetaData, metadata::VideoInfo},
 		routes::routes,
 		services::{metadata::get_metadata_by_url, youtube::MockYtService},
 		utils::YTUrl,
@@ -115,19 +112,6 @@ async fn should_get_and_cache_metadata(pool: PgPool) -> Result<()> {
 	assert_eq!(row.title, mock_metadata.title);
 
 	Ok(())
-}
-
-mock! {
-	pub Completion {}
-	#[allow(refining_impl_trait, reason="this is for tests and for some reason it doesn't like impls in returns")]
-	impl CompletionClient for Completion {
-		fn post(&self, prompt: &str, text: &str) -> impl Future<Output = youtube_summarizer_server::error::Result<String>> + Send;
-		fn post_stream(self, prompt: &str, text: &str) -> impl Future<Output = youtube_summarizer_server::error::Result<core::pin::Pin<Box<dyn futures::Stream<Item = youtube_summarizer_server::web::clients::completions::stream::SseMessage> + Send>>>> + Send;
-	}
-
-	impl Clone for Completion {
-		fn clone(&self) -> Self;
-	}
 }
 
 const TEST_ID: &str = "TEST_ID";

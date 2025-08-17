@@ -6,7 +6,7 @@
 - should act as independent writing without referencing the original
 - use markdown headers to define main points with subpoints below
 
-<videoTitle>{title}</videoTitle>
+You will receive metadata and then a piece of a transcript. Consider the metadata's relevancy to the transcript. It may be misleading
 
 <example>
 # Title

@@ -113,7 +113,10 @@ async fn oneshot_summary_stream(
 	transcript: &str,
 ) -> Result<Pin<Box<dyn Stream<Item = SseMessage> + Send>>> {
 	client
-		.post_stream(&ctx.oneshot_prompt(), transcript)
+		.post_stream(
+			PromptContext::ONESHOT_SUMMARY,
+			&[ctx.metadata(), transcript.to_string()],
+		)
 		.await
 }
 
@@ -123,7 +126,7 @@ async fn chunk_summary_oneshot(
 	chunk: String,
 ) -> Result<String> {
 	client
-		.post(&ctx.chunk_prompt(), &chunk)
+		.post(PromptContext::CHUNKED_SUMMARY, &[ctx.metadata(), chunk])
 		.await
 }
 
@@ -170,7 +173,7 @@ async fn multi_chunk_summary_stream(
 	tracing::debug!(combined);
 
 	client
-		.post_stream(&ctx.combine_prompt(), &combined)
+		.post_stream(PromptContext::CHUNKED_COMBINE, &[ctx.metadata(), combined])
 		.await
 }
 
