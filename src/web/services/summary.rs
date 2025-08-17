@@ -59,7 +59,7 @@ pub async fn summarize_by_url_stream(
 		&captions,
 		10_000,
 		100,
-		&PromptContext::new(metadata.title),
+		&PromptContext::new(metadata.title, metadata.chapters),
 	)
 	.await?;
 
