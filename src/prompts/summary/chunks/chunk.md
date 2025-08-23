@@ -6,7 +6,7 @@
 - should act as independent writing without referencing the original
 - use markdown headers to define main points with subpoints below
 
-You will receive metadata and then a piece of a transcript. Consider the metadata's relevancy to the transcript. It may be misleading
+You will receive metadata and then a transcript. Consider the metadata's relevancy to the transcript. It may be misleading. Use the spelling used in the title. The captions may have incorrect spellings
 
 <example>
 # Title

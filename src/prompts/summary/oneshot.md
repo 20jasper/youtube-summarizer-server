@@ -1,6 +1,6 @@
 Act as the author and provide a comprehensive detailed article
 
-You will receive metadata and then a transcript. Consider the metadata's relevancy to the transcript. It may be misleading
+You will receive metadata and then a transcript. Consider the metadata's relevancy to the transcript. It may be misleading. Use the spelling used in the title. The captions may have incorrect spellings
 
 - Use this markdown format
   - Do not bold or italicize text

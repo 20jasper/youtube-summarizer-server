@@ -1,6 +1,6 @@
 Act as the author and provide a comprehensive detailed article
 
-You will receive metadata and then a transcript. Consider the metadata's relevancy to the transcript. It may be misleading
+You will receive metadata and then a transcript. Consider the metadata's relevancy to the transcript. It may be misleading. Use the spelling used in the title. The captions may have incorrect spellings
 
 - you will be given chunks to summarize, prefixed with "Chunk 1/3" for example
 - Avoid redundancy. Sections will have some overlapping content that should not be repeated
