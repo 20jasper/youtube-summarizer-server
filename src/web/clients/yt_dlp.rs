@@ -81,7 +81,14 @@ impl YtdlpClient {
 		cmd.arg(FLAG_WRITE_INFO_JSON)
 			.arg(url.as_str());
 
-		let Output { status, stderr, .. } = cmd.output()?;
+		tracing::info!("running yt-dlp command: {:?}", cmd);
+		let Output {
+			status,
+			stderr,
+			stdout,
+		} = cmd.output()?;
+		tracing::info!(status = ?status, stderr = ?str::from_utf8(&stderr), stdout = ?str::from_utf8(&stdout), "yt-dlp output");
+
 		if !status.success() {
 			return Err(format!(
 				"get video data failed with status code {}, {:?}",
