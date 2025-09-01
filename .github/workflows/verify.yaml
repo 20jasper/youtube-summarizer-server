@@ -74,7 +74,11 @@ jobs:
           - 5432:5432
     env:
       RUSTFLAGS: "-Dwarnings"
-      DATABASE_URL: "postgres://postgres:postgres@localhost:5432/postgres"
+      DB_USERNAME: "postgres"
+      DB_PASSWORD: "password"
+      DB_PORT: "5432"
+      DB_HOST: "localhost"
+      DB_NAME: "example"
 
     steps:
       - uses: actions/checkout@v5
