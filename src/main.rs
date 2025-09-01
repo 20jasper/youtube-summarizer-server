@@ -1,12 +1,8 @@
-use axum::serve;
 use core::net::{Ipv4Addr, SocketAddr};
 use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
 use tokio::net::TcpListener;
-use tracing::{Level, event};
 use tracing_subscriber::{EnvFilter, Layer};
 use youtube_summarizer_server::web::services::env::load_env;
-
-use crate::web::routes::routes;
 
 pub mod error;
 pub mod prompts;
@@ -47,16 +43,16 @@ async fn main() {
 	load_env().unwrap();
 	init_tracing();
 
-	let pool = init_db().await.unwrap();
-	let routes = routes(pool);
-
 	let address = SocketAddr::from((Ipv4Addr::UNSPECIFIED, 8080));
 	let listener = TcpListener::bind(address)
 		.await
 		.unwrap();
-	event!(Level::INFO, "Listening on http://{address}");
 
-	serve(listener, routes.into_make_service())
+	let pool = init_db().await.unwrap();
+
+	tracing::info!("Listening on http://{address}");
+
+	youtube_summarizer_server::run(listener, pool)
 		.await
 		.unwrap();
 }
