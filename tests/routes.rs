@@ -13,7 +13,9 @@ use youtube_summarizer_server::{
 	web::{
 		clients::yt_dlp::{VideoMetaData, metadata::VideoInfo},
 		routes::routes,
-		services::{metadata::get_metadata_by_url, youtube::MockYtService},
+		services::{
+			env::ApplicationSettings, metadata::get_metadata_by_url, youtube::MockYtService,
+		},
 		utils::YTUrl,
 	},
 };
@@ -26,7 +28,13 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[sqlx::test]
 async fn can_build_router(pool: PgPool) -> Result<()> {
-	let routes = routes(pool);
+	let routes = routes(
+		pool,
+		&ApplicationSettings {
+			port: 8000,
+			public_dir: "doesn't matter".into(),
+		},
+	);
 	let response = routes
 		.oneshot(
 			Request::builder()
@@ -119,7 +127,13 @@ const TEST_ID: &str = "TEST_ID";
 #[sqlx::test(fixtures(path = "fixtures", scripts("video_with_summary")))]
 async fn should_submit_feedback_for_existing_summary(pool: PgPool) -> Result<()> {
 	let message = "rust is a must";
-	let routes = routes(pool.clone());
+	let routes = routes(
+		pool.clone(),
+		&ApplicationSettings {
+			port: 8000,
+			public_dir: "doesn't matter".into(),
+		},
+	);
 
 	let response = routes
 		.oneshot(
@@ -144,7 +158,13 @@ async fn should_submit_feedback_for_existing_summary(pool: PgPool) -> Result<()>
 }
 
 async fn summary_error(pool: PgPool, url: &str, error_message: &str) -> Result<()> {
-	let routes = routes(pool);
+	let routes = routes(
+		pool,
+		&ApplicationSettings {
+			port: 8000,
+			public_dir: "doesn't matter".into(),
+		},
+	);
 
 	let response = routes
 		.oneshot(

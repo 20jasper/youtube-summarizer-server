@@ -1,6 +1,6 @@
 use crate::error::{Error, Result};
 use crate::web::clients::completions::stream::{SseMessage, bytes_to_sse_message};
-use crate::web::services::env::load_env;
+use crate::web::services::env::{FromEnv, OpenAISettings};
 use core::future::Future;
 use core::iter;
 use core::pin::Pin;
@@ -9,7 +9,6 @@ use futures::{Stream, StreamExt};
 use mockall::automock;
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
-use std::env;
 
 const SYSTEM_ROLE: &str = "system";
 const USER_ROLE: &str = "user";
@@ -129,22 +128,13 @@ impl DeepInfraClient {
 	}
 
 	pub fn from_env() -> Result<Self> {
-		const OPEN_AI_API_KEY: &str = "OPEN_AI_API_KEY";
-		const OPEN_AI_MODEL: &str = "OPEN_AI_MODEL";
-		const OPEN_AI_BASE_URL: &str = "OPEN_AI_BASE_URL";
+		let OpenAISettings {
+			api_key,
+			base_url,
+			model,
+		} = OpenAISettings::from_env().map_err(|_| Error::EnvMissingOrInvalid("OPEN_AI_*"))?;
 
-		load_env()?;
-
-		let api_key =
-			env::var(OPEN_AI_API_KEY).map_err(|_| Error::EnvMissingOrInvalid(OPEN_AI_API_KEY))?;
-		let model =
-			env::var(OPEN_AI_MODEL).map_err(|_| Error::EnvMissingOrInvalid(OPEN_AI_MODEL))?;
-		let url = env::var(OPEN_AI_BASE_URL)
-			.map_err(|_| Error::EnvMissingOrInvalid(OPEN_AI_BASE_URL))?
-			.parse::<Url>()
-			.map_err(|_| Error::EnvMissingOrInvalid(OPEN_AI_BASE_URL))?;
-
-		DeepInfraClient::build(model, &url, api_key)
+		DeepInfraClient::build(model, &base_url, api_key)
 	}
 
 	async fn base_post(

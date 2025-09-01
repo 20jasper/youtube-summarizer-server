@@ -11,6 +11,7 @@ use crate::web::clients::yt_dlp::metadata::VideoInfo;
 use crate::web::utils::YTUrl;
 use derive_builder::Builder;
 use reqwest::Url;
+use std::path::PathBuf;
 use std::process::Command;
 use std::process::Output;
 
@@ -39,6 +40,8 @@ pub struct YtdlpClient {
 	#[builder(default = 3)]
 	retries: u8,
 	proxy: Url,
+	#[builder(default = PathBuf::from("./transcripts"))]
+	output_path: PathBuf,
 }
 
 impl YtdlpClient {
@@ -57,12 +60,7 @@ impl YtdlpClient {
 			.arg(FLAG_PROXY)
 			.arg(self.proxy.as_str())
 			.arg(FLAG_PATHS)
-			.arg(
-				Artifact::dir_from_env()
-					.as_path()
-					.to_str()
-					.expect("path should always be valid utf8"),
-			);
+			.arg(&self.output_path);
 
 		if self.download_subtitles {
 			cmd.arg(FLAG_WRITE_SUBS)
@@ -100,9 +98,10 @@ impl YtdlpClient {
 			.into());
 		}
 
-		let captions = Artifact::Captions.extract(url)?;
-		let metadata: VideoInfo = serde_json::from_str(&Artifact::Metadata.extract(url)?)
-			.map_err(|_| Error::MalformedOrMissingYtMetadata(url.clone()))?;
+		let captions = Artifact::Captions(self.output_path.clone()).extract(url)?;
+		let metadata: VideoInfo =
+			serde_json::from_str(&Artifact::Metadata(self.output_path.clone()).extract(url)?)
+				.map_err(|_| Error::MalformedOrMissingYtMetadata(url.clone()))?;
 
 		Ok(VideoMetaData { metadata, captions })
 	}

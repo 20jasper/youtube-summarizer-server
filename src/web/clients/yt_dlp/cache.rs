@@ -5,46 +5,42 @@ use crate::{
 	web::utils::YTUrl,
 };
 use std::{
-	env, fs,
+	fs,
 	path::{Path, PathBuf},
 };
 
 const CAPTIONS_EXT: &str = "en.vtt";
 const METADATA_EXT: &str = "info.json";
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Artifact {
-	Captions,
-	Metadata,
+	Captions(PathBuf),
+	Metadata(PathBuf),
 }
 
 impl Artifact {
-	pub fn extension(self) -> &'static str {
+	pub fn extension(&self) -> &'static str {
 		match self {
-			Artifact::Captions => CAPTIONS_EXT,
-			Artifact::Metadata => METADATA_EXT,
+			Artifact::Captions(_) => CAPTIONS_EXT,
+			Artifact::Metadata(_) => METADATA_EXT,
 		}
 	}
 
-	pub fn dir_from_env() -> PathBuf {
-		env::var("OUTPUT_PATH")
-			.unwrap_or_else(|_| "./transcripts".to_string())
-			.into()
+	fn dir(&self) -> &Path {
+		match self {
+			Artifact::Captions(d) | Artifact::Metadata(d) => d,
+		}
 	}
 
-	pub fn path_from_env(self, url: &YTUrl) -> PathBuf {
-		self.path(url, &Self::dir_from_env())
-	}
-
-	pub fn path(self, url: &YTUrl, dir: &Path) -> PathBuf {
-		let mut path = dir.join(url.id());
+	pub fn path(self, url: &YTUrl) -> PathBuf {
+		let mut path = self.dir().join(url.id());
 		path.set_extension(self.extension());
 		path
 	}
 
 	/// deletes and returns the artifact
 	pub fn extract(self, url: &YTUrl) -> Result<String> {
-		let path = self.path_from_env(url);
+		let path = self.path(url);
 		let val = fs::read_to_string(&path).map_err(|_| Error::CaptionsUnavailable(url.clone()));
 
 		if let Err(e) = fs::remove_file(&path) {
