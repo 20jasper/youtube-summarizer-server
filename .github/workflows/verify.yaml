@@ -10,6 +10,7 @@ on:
       - main
 
 env:
+  RUSTFLAGS: "-Dwarnings"
   CARGO_TERM_COLOR: always
   TOOLCHAIN: stable
   SQLX_OFFLINE: true
@@ -73,8 +74,12 @@ jobs:
         ports:
           - 5432:5432
     env:
-      RUSTFLAGS: "-Dwarnings"
-      DATABASE_URL: "postgres://postgres:postgres@localhost:5432/postgres"
+      DATABASE_URL: "postgres://postgres:postgres@localhost:5432/postgres" # TODO remove after migrating other DB tests to use spawn_app
+      DB_USERNAME: "postgres"
+      DB_PASSWORD: "postgres"
+      DB_PORT: "5432"
+      DB_HOST: "localhost"
+      DB_NAME: "postgres"
 
     steps:
       - uses: actions/checkout@v5
