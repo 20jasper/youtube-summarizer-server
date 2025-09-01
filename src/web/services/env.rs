@@ -117,8 +117,12 @@ pub struct AxiomSettings {
 fn public_dir() -> PathBuf {
 	"/public".into()
 }
+fn port() -> u16 {
+	8080
+}
 #[derive(serde::Deserialize, Clone, Debug)]
 pub struct ApplicationSettings {
+	#[serde(default = "port")]
 	pub port: u16,
 	#[serde(default = "public_dir")]
 	pub public_dir: PathBuf,

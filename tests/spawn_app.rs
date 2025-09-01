@@ -3,7 +3,9 @@ use reqwest::StatusCode;
 use sqlx::{PgConnection, PgPool};
 use tokio::net::TcpListener;
 use uuid::Uuid;
-use youtube_summarizer_server::web::services::env::{DatabaseSettings, FromEnv as _, Settings};
+use youtube_summarizer_server::web::services::env::{
+	ApplicationSettings, DatabaseSettings, FromEnv as _,
+};
 
 #[tokio::test]
 #[rstest::rstest]
@@ -66,12 +68,16 @@ async fn spawn_app() -> TestApp {
 		.unwrap();
 	let addr = listener.local_addr().unwrap();
 
-	let mut settings = Settings::from_env().unwrap();
-	settings.database.name = Uuid::new_v4().to_string();
+	let mut db_settings = DatabaseSettings::from_env().unwrap();
+	db_settings.name = Uuid::new_v4().to_string();
 
-	let pool = setup_test_db(&settings.database).await;
+	let pool = setup_test_db(&db_settings).await;
 
-	let server = youtube_summarizer_server::run(listener, pool.clone(), settings.application);
+	let server = youtube_summarizer_server::run(
+		listener,
+		pool.clone(),
+		ApplicationSettings::from_env().unwrap(),
+	);
 
 	tokio::spawn(server);
 
