@@ -3,10 +3,7 @@ use reqwest::StatusCode;
 use sqlx::{PgConnection, PgPool};
 use tokio::net::TcpListener;
 use uuid::Uuid;
-use youtube_summarizer_server::{
-	init_tracing,
-	web::services::env::{DatabaseSettings, FromEnv as _, Settings},
-};
+use youtube_summarizer_server::web::services::env::{DatabaseSettings, FromEnv as _, Settings};
 
 #[tokio::test]
 #[rstest::rstest]
@@ -29,6 +26,7 @@ async fn spawns_non_conflicting_app_instances() {
 
 struct TestApp {
 	addr: String,
+	#[allow(dead_code, reason = "will use it later!")]
 	pool: PgPool,
 }
 
