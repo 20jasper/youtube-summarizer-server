@@ -10,5 +10,6 @@
       "database": "example",
       "username": "postgres"
     }
-  ]
+  ],
+  "rust-analyzer.cargo.features": ["dotenv"]
 }
