@@ -15,9 +15,50 @@ env:
   SQLX_OFFLINE: true
 
 jobs:
-  ci:
-    timeout-minutes: 30
-    name: verify
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: update rust
+        run: rustup update ${{ env.TOOLCHAIN }} && rustup default ${{ env.TOOLCHAIN }}
+      - name: Install just
+        uses: taiki-e/install-action@just
+      - name: Configure Dependency Caching
+        uses: Swatinem/rust-cache@v2
+
+      - name: check formatting
+        run: just format-check
+
+  lint:
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: "-Dwarnings"
+    steps:
+      - uses: actions/checkout@v5
+      - name: update rust
+        run: rustup update ${{ env.TOOLCHAIN }} && rustup default ${{ env.TOOLCHAIN }}
+      - name: Install just
+        uses: taiki-e/install-action@just
+      - name: Configure Dependency Caching
+        uses: Swatinem/rust-cache@v2
+
+      - name: check formatting
+        run: just format-check
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: update rust
+        run: rustup update ${{ env.TOOLCHAIN }} && rustup default ${{ env.TOOLCHAIN }}
+      - name: Install just
+        uses: taiki-e/install-action@just
+      - name: Configure Dependency Caching
+        uses: Swatinem/rust-cache@v2
+
+      - name: build
+        run: cargo build --release --verbose
+  test:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -36,8 +77,7 @@ jobs:
       DATABASE_URL: "postgres://postgres:postgres@localhost:5432/postgres"
 
     steps:
-      - name: checkout code
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
       - name: update rust
         run: rustup update ${{ env.TOOLCHAIN }} && rustup default ${{ env.TOOLCHAIN }}
       - name: Install just
@@ -45,11 +85,5 @@ jobs:
       - name: Configure Dependency Caching
         uses: Swatinem/rust-cache@v2
 
-      - name: check formatting
-        run: just format-check
-      - name: lint
-        run: just lint
       - name: test
         run: cargo test --verbose
-      - name: build
-        run: cargo build --release --verbose
