@@ -76,7 +76,7 @@ jobs:
     env:
       DATABASE_URL: "postgres://postgres:postgres@localhost:5432/postgres" # TODO remove after migrating other DB tests to use spawn_app
       DB_USERNAME: "postgres"
-      DB_PASSWORD: "password"
+      DB_PASSWORD: "postgres"
       DB_PORT: "5432"
       DB_HOST: "localhost"
       DB_NAME: "postgres"
