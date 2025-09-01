@@ -1,6 +1,35 @@
+pub use error::{Error, Result};
 use std::path::PathBuf;
 
-use crate::error::Result;
+mod error {
+	#[cfg(not(feature = "dotenv"))]
+	use core::convert::Infallible;
+
+	use core::fmt::{self, Display, Formatter};
+	use derive_more::From;
+
+	pub type Result<T> = core::result::Result<T, Error>;
+
+	#[derive(Debug, From)]
+	pub enum Error {
+		#[cfg(feature = "dotenv")]
+		#[from]
+		Load(dotenvy::Error),
+		#[cfg(not(feature = "dotenv"))]
+		Load(Infallible),
+
+		#[from]
+		Parse(envy::Error),
+	}
+
+	impl Display for Error {
+		fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
+			write!(formatter, "{self:?}")
+		}
+	}
+
+	impl std::error::Error for Error {}
+}
 
 #[cfg(not(feature = "dotenv"))]
 pub fn load_env() -> Result<()> {
@@ -17,7 +46,7 @@ pub fn load_env() -> Result<()> {
 }
 
 pub trait FromEnv {
-	fn from_env() -> std::result::Result<Self, envy::Error>
+	fn from_env() -> Result<Self>
 	where
 		Self: Sized;
 }
@@ -25,9 +54,9 @@ pub trait FromEnv {
 macro_rules! from_env {
 	($t:ty, $prefix:literal) => {
 		impl FromEnv for $t {
-			fn from_env() -> std::result::Result<Self, envy::Error> {
-				load_env().unwrap();
-				envy::prefixed($prefix).from_env()
+			fn from_env() -> Result<Self> {
+				load_env()?;
+				Ok(envy::prefixed($prefix).from_env()?)
 			}
 		}
 	};
@@ -105,7 +134,7 @@ pub struct Settings {
 }
 
 impl FromEnv for Settings {
-	fn from_env() -> std::result::Result<Self, envy::Error> {
+	fn from_env() -> Result<Self> {
 		Ok(Settings {
 			application: ApplicationSettings::from_env()?,
 			database: DatabaseSettings::from_env()?,

@@ -10,7 +10,8 @@ pub mod error;
 pub mod prompts;
 pub mod web;
 
-fn init_tracing(_settings: Option<AxiomSettings>) {
+#[allow(unused_variables, reason = "used only in axiom feature")]
+fn init_tracing(settings: Option<&AxiomSettings>) {
 	use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
 	let fmt_layer = tracing_subscriber::fmt::layer().with_filter(
@@ -23,7 +24,7 @@ fn init_tracing(_settings: Option<AxiomSettings>) {
 	let registry = tracing_subscriber::registry().with(fmt_layer);
 
 	#[cfg(feature = "axiom")]
-	let registry = registry.with(tracing_axiom::default(&_settings.unwrap().dataset).unwrap());
+	let registry = registry.with(tracing_axiom::default(&settings.unwrap().dataset).unwrap());
 
 	registry.try_init().unwrap();
 }
@@ -43,7 +44,7 @@ async fn init_db(settings: DatabaseSettings) -> Result<Pool<Postgres>, sqlx::Err
 #[tokio::main]
 async fn main() {
 	let settings = Settings::from_env().unwrap();
-	init_tracing(settings.axiom);
+	init_tracing(settings.axiom.as_ref());
 
 	let address = SocketAddr::from((Ipv4Addr::UNSPECIFIED, settings.application.port));
 	let listener = TcpListener::bind(address)

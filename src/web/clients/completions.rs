@@ -1,4 +1,4 @@
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::web::clients::completions::stream::{SseMessage, bytes_to_sse_message};
 use crate::web::services::env::{FromEnv, OpenAISettings};
 use core::future::Future;
@@ -132,7 +132,7 @@ impl DeepInfraClient {
 			api_key,
 			base_url,
 			model,
-		} = OpenAISettings::from_env().map_err(|_| Error::EnvMissingOrInvalid("OPEN_AI_*"))?;
+		} = OpenAISettings::from_env()?;
 
 		DeepInfraClient::build(model, &base_url, api_key)
 	}

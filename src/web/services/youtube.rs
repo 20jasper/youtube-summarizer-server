@@ -33,7 +33,7 @@ impl YtDlpService {
 			proxy,
 			retries,
 			output_path,
-		} = YouTubeSettings::from_env().expect("TODO FIX THIS ");
+		} = YouTubeSettings::from_env()?;
 
 		Ok(Self::new(retries, proxy, output_path))
 	}
