@@ -1,19 +1,16 @@
-use std::env;
-
+use crate::web::services::env::ApplicationSettings;
 use axum::{Router, routing::get};
 use sqlx::PgPool;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 
 pub mod summary;
 
-pub fn routes(pool: PgPool) -> Router {
+pub fn routes(pool: PgPool, app: &ApplicationSettings) -> Router {
 	Router::new()
 		.route("/", get(|| async { "hello world" }))
 		.nest("/summary", summary::routes())
 		// layers run from bottom to top
-		.fallback_service(ServeDir::new(
-			env::var("PUBLIC_DIR").unwrap_or("public/".into()),
-		))
+		.fallback_service(ServeDir::new(app.public_dir.clone()))
 		.layer(TraceLayer::new_for_http())
 		.with_state(pool)
 }

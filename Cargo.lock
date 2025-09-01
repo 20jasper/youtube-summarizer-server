@@ -595,6 +595,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "envy"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f47e0157f2cb54f5ae1bd371b30a2ae4311e1c028f575cd4e81de7353215965"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3913,6 +3922,7 @@ dependencies = [
  "derive_builder",
  "derive_more",
  "dotenvy",
+ "envy",
  "futures",
  "http-body-util",
  "httpc-test",

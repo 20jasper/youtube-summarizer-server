@@ -1,6 +1,4 @@
-#[cfg(not(feature = "dotenv"))]
-use core::convert::Infallible;
-
+use crate::web::services::env;
 use crate::web::utils::{YTUrl, yt_url};
 use axum::{Json, response::IntoResponse};
 use core::fmt::{self, Display, Formatter};
@@ -13,14 +11,8 @@ pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug, From)]
 pub enum Error {
-	EnvMissingOrInvalid(&'static str),
-
-	#[cfg(feature = "dotenv")]
 	#[from]
-	EnvParse(dotenvy::Error),
-
-	#[cfg(not(feature = "dotenv"))]
-	EnvParse(Infallible),
+	Env(env::Error),
 
 	CaptionsUnavailable(YTUrl),
 	MalformedOrMissingYtMetadata(YTUrl),
@@ -77,9 +69,7 @@ impl IntoResponse for Error {
 		event!(Level::WARN, error=?self);
 
 		match self {
-			E::EnvMissingOrInvalid(_) | E::EnvParse(_) => {
-				error_response(StatusCode::SERVICE_UNAVAILABLE, "Service Unavailable")
-			}
+			E::Env(_) => error_response(StatusCode::SERVICE_UNAVAILABLE, "Service Unavailable"),
 			E::Timeout(_) => error_response(StatusCode::GATEWAY_TIMEOUT, "Gateway Timeout"),
 			E::YtUrl(e) => error_response(StatusCode::BAD_REQUEST, e.to_string()),
 			E::CaptionsUnavailable(url) => error_response(

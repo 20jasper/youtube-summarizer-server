@@ -1,10 +1,10 @@
+use std::path::PathBuf;
+
+use crate::error::Result;
 use crate::web::clients::YtdlpClientBuilder;
 use crate::web::clients::yt_dlp::VideoMetaData;
+use crate::web::services::env::{FromEnv, YouTubeSettings};
 use crate::web::utils::YTUrl;
-use crate::{
-	error::{Error, Result},
-	web::services::env::load_env,
-};
 use mockall::automock;
 use reqwest::Url;
 
@@ -16,27 +16,26 @@ pub trait YtService {
 pub struct YtDlpService {
 	retries: u8,
 	proxy: Url,
+	output_path: PathBuf,
 }
 
 impl YtDlpService {
-	pub fn new(retries: u8, proxy: Url) -> Self {
-		Self { retries, proxy }
+	pub fn new(retries: u8, proxy: Url, output_path: PathBuf) -> Self {
+		Self {
+			retries,
+			proxy,
+			output_path,
+		}
 	}
 
 	pub fn from_env() -> Result<Self> {
-		const YOUTUBE_PROXY: &str = "YOUTUBE_PROXY";
-		const YOUTUBE_RETRIES: &str = "YOUTUBE_RETRIES";
-		load_env()?;
+		let YouTubeSettings {
+			proxy,
+			retries,
+			output_path,
+		} = YouTubeSettings::from_env()?;
 
-		let proxy =
-			std::env::var(YOUTUBE_PROXY).map_err(|_| Error::EnvMissingOrInvalid(YOUTUBE_PROXY))?;
-		let proxy = Url::parse(&proxy).map_err(|_| Error::EnvMissingOrInvalid(YOUTUBE_PROXY))?;
-		let retries = std::env::var(YOUTUBE_RETRIES)
-			.ok()
-			.and_then(|s| s.parse::<u8>().ok())
-			.unwrap_or(3);
-
-		Ok(Self::new(retries, proxy))
+		Ok(Self::new(retries, proxy, output_path))
 	}
 }
 
@@ -45,6 +44,7 @@ impl YtService for YtDlpService {
 		YtdlpClientBuilder::default()
 			.proxy(self.proxy.clone())
 			.retries(self.retries)
+			.output_path(self.output_path.clone())
 			.download_subtitles(true)
 			.build()
 			.unwrap()
