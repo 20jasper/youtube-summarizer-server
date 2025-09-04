@@ -31,10 +31,23 @@ pub fn init_tracing(settings: Option<&AxiomSettings>) {
 			})
 			.unwrap(),
 	);
+
 	let registry = tracing_subscriber::registry().with(fmt_layer);
 
 	#[cfg(feature = "axiom")]
-	let registry = registry.with(tracing_axiom::default(&settings.unwrap().dataset).unwrap());
+	{
+		let axiom_layer = settings.map(|AxiomSettings { dataset, .. }| {
+			tracing_axiom::default(dataset).expect("failed to init axiom layer")
+		});
+		if axiom_layer.is_none() {
+			tracing::info!("axiom variables not set, not initing axiom");
+		}
+		registry
+			.with(axiom_layer)
+			.try_init()
+			.unwrap();
+	}
 
+	#[cfg(not(feature = "axiom"))]
 	registry.try_init().unwrap();
 }
