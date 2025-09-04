@@ -76,7 +76,11 @@ async fn spawn_app() -> TestApp {
 	let server = youtube_summarizer_server::run(
 		listener,
 		pool.clone(),
-		ApplicationSettings::from_env().unwrap(),
+		ApplicationSettings {
+			// Both don't matter
+			port: 0,
+			public_dir: "lskdjfdsl".into(),
+		},
 	);
 
 	tokio::spawn(server);
