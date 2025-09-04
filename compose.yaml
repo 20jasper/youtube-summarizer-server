@@ -17,13 +17,18 @@ services:
     ports:
       - 6981:8080
     environment:
-      - OUTPUT_PATH=${OUTPUT_PATH:-/var/dist}
-      - YOUTUBE_RETRIES=${YOUTUBE_RETRIES}
+      - APPLICATION_OUTPUT_PATH=${OUTPUT_PATH:-/var/dist}
       - YOUTUBE_PROXY=${YOUTUBE_PROXY:?must include proxy}
       - OPEN_AI_API_KEY=${OPEN_AI_API_KEY:?must include OpenAI API key}
       - OPEN_AI_BASE_URL=${OPEN_AI_BASE_URL:? must include OpenAI base URL}
       - OPEN_AI_MODEL=${OPEN_AI_MODEL:? must include OpenAI model}
       - DATABASE_URL=postgresql://db:5432/example?user=postgres&password=password
+      - DB_USERNAME=postgres
+      - DB_NAME=example
+      - DB_PORT=5432
+      - DB_HOST=db
+      - DB_PASSWORD=password
+      - APPLICATION_PUBLIC_DIR=/var/www
     depends_on:
       db:
         condition: service_healthy
