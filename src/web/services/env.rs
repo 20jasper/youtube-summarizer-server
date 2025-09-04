@@ -114,9 +114,6 @@ pub struct AxiomSettings {
 	pub dataset: String,
 }
 
-fn public_dir() -> PathBuf {
-	"/public".into()
-}
 fn port() -> u16 {
 	8080
 }
@@ -124,7 +121,6 @@ fn port() -> u16 {
 pub struct ApplicationSettings {
 	#[serde(default = "port")]
 	pub port: u16,
-	#[serde(default = "public_dir")]
 	pub public_dir: PathBuf,
 }
 
