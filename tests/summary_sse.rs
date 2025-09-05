@@ -1,4 +1,3 @@
-#![allow(clippy::tests_outside_test_module)]
 use axum::response::sse;
 use core::pin::Pin;
 use futures::StreamExt as _;

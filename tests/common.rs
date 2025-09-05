@@ -1,5 +1,3 @@
-#![allow(clippy::tests_outside_test_module)]
-
 use http_body_util::BodyExt as _;
 use mockall::mock;
 use youtube_summarizer_server::web::clients::CompletionClient;
@@ -21,9 +19,7 @@ mock! {
 	dead_code,
 	reason = "It is used, but each integration test is compiled separately, so it considered unused if not imported in each test file"
 )]
-pub async fn body_to_string(
-	res: axum::response::Response,
-) -> Result<String, Box<dyn std::error::Error>> {
+pub async fn body_to_string(res: axum::response::Response) -> Result<String> {
 	let bytes = res
 		.into_body()
 		.collect()
@@ -32,3 +28,5 @@ pub async fn body_to_string(
 		.to_vec();
 	Ok(String::from_utf8(bytes)?)
 }
+
+pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;

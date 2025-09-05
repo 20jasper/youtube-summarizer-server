@@ -26,10 +26,9 @@ async fn spawns_non_conflicting_app_instances() {
 	assert_eq!(res.status(), StatusCode::OK);
 }
 
-struct TestApp {
-	addr: String,
-	#[allow(dead_code, reason = "will use it later!")]
-	pool: PgPool,
+pub struct TestApp {
+	pub addr: String,
+	pub pool: PgPool,
 }
 
 pub async fn setup_test_db(settings: &DatabaseSettings) -> sqlx::Pool<sqlx::Postgres> {
@@ -62,7 +61,7 @@ pub async fn setup_test_db(settings: &DatabaseSettings) -> sqlx::Pool<sqlx::Post
 	pool
 }
 
-async fn spawn_app() -> TestApp {
+pub async fn spawn_app() -> TestApp {
 	let listener = TcpListener::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0)))
 		.await
 		.unwrap();
