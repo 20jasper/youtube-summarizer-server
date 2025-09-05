@@ -1,5 +1,3 @@
-#![allow(clippy::tests_outside_test_module)]
-
 use youtube_summarizer_server::web::clients::yt_dlp::metadata::VideoInfo;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;

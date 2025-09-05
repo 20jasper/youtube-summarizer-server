@@ -1,11 +1,10 @@
-#![allow(clippy::tests_outside_test_module)]
-
+use crate::common::Result;
+use crate::common::body_to_string;
 use axum::{
 	body::Body,
-	http::{self, Request, StatusCode},
+	http::{Request, StatusCode},
 };
 use mockall::predicate;
-use serde_json::json;
 use sqlx::PgPool;
 use tower::ServiceExt as _;
 use youtube_summarizer_server::{
@@ -20,38 +19,7 @@ use youtube_summarizer_server::{
 	},
 };
 
-use crate::common::body_to_string;
-
 mod common;
-
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
-
-#[sqlx::test]
-async fn can_build_router(pool: PgPool) -> Result<()> {
-	let routes = routes(
-		pool,
-		&ApplicationSettings {
-			port: 8000,
-			public_dir: "doesn't matter".into(),
-		},
-	);
-	let response = routes
-		.oneshot(
-			Request::builder()
-				.uri("/")
-				.body(Body::empty())
-				.unwrap(),
-		)
-		.await?;
-
-	assert_eq!(response.status(), StatusCode::OK);
-
-	let body = body_to_string(response).await?;
-
-	assert_eq!(body, "hello world");
-
-	Ok(())
-}
 
 const VTT: &str = include_str!("./test.vtt");
 const CLEAN_VTT: &str =
@@ -118,41 +86,6 @@ async fn should_get_and_cache_metadata(pool: PgPool) -> Result<()> {
 	let stored: VideoInfo = serde_json::from_value(row.metadata)?;
 	assert_eq!(stored, mock_metadata);
 	assert_eq!(row.title, mock_metadata.title);
-
-	Ok(())
-}
-
-const TEST_ID: &str = "TEST_ID";
-
-#[sqlx::test(fixtures(path = "fixtures", scripts("video_with_summary")))]
-async fn should_submit_feedback_for_existing_summary(pool: PgPool) -> Result<()> {
-	let message = "rust is a must";
-	let routes = routes(
-		pool.clone(),
-		&ApplicationSettings {
-			port: 8000,
-			public_dir: "doesn't matter".into(),
-		},
-	);
-
-	let response = routes
-		.oneshot(
-			Request::builder()
-				.uri("/summary/rating".to_string())
-				.method(http::Method::POST)
-				.header(http::header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
-				.body(Body::from(
-					json!({"rating": "dislike", "message": message, "videoId": TEST_ID})
-						.to_string(),
-				))?,
-		)
-		.await?;
-	assert_eq!(response.status(), StatusCode::OK);
-
-	let res = sqlx::query!("SELECT message FROM ratings WHERE video_ID = $1", TEST_ID)
-		.fetch_one(&pool)
-		.await?;
-	assert_eq!(res.message, Some(message.into()));
 
 	Ok(())
 }
