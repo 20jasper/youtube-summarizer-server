@@ -9,7 +9,7 @@ use mockall::automock;
 use reqwest::Url;
 
 #[automock]
-pub trait YtService {
+pub trait YtService: Send + Sync + 'static {
 	fn fetch_metadata(&self, url: &YTUrl) -> Result<VideoMetaData>;
 }
 

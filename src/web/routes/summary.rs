@@ -1,31 +1,29 @@
 use crate::error::{Error, Result};
 use crate::web::clients::DeepInfraClient;
+use crate::web::routes::AppState;
 use crate::web::services::summary::summarize_by_url_stream;
-use crate::web::services::youtube::YtDlpService;
 use crate::web::utils::YTUrl;
 use axum::extract::State;
 use axum::response::{Sse, sse};
 use axum::routing::post;
 use axum::{Json, Router, extract::Query, http::StatusCode, routing::get};
-use axum_macros::debug_handler;
 use futures::StreamExt;
 use serde::Deserialize;
-use sqlx::PgPool;
 use tracing::instrument;
 
 #[derive(Deserialize)]
 struct SummaryParams {
 	url: String,
 }
-#[instrument(skip(pool), fields(url, video_id = %YTUrl::try_from(url.as_str())?.id()))]
+#[instrument(skip(pool, yt_service), fields(url, video_id = %YTUrl::try_from(url.as_str())?.id()))]
 async fn summarize(
 	Query(SummaryParams { url }): Query<SummaryParams>,
-	State(pool): State<PgPool>,
+	State(AppState { pool, yt_service }): State<AppState>,
 ) -> Result<Sse<impl futures::Stream<Item = std::result::Result<sse::Event, axum::Error>>>> {
 	let stream = summarize_by_url_stream(
 		&url.as_str().try_into()?,
 		pool,
-		YtDlpService::from_env()?,
+		yt_service.as_ref(),
 		DeepInfraClient::from_env()?,
 	)
 	.await?
@@ -49,9 +47,8 @@ struct Rate {
 	message: Option<String>,
 }
 #[instrument(skip(pool))]
-#[debug_handler]
 async fn rate(
-	State(pool): State<PgPool>,
+	State(AppState { pool, .. }): State<AppState>,
 	Json(Rate {
 		video_id,
 		rating,
@@ -85,7 +82,7 @@ async fn rate(
 	Ok((StatusCode::OK, ()))
 }
 
-pub fn routes() -> Router<PgPool> {
+pub fn routes() -> Router<AppState> {
 	Router::new()
 		.route("/", get(summarize))
 		.route("/rating", post(rate))

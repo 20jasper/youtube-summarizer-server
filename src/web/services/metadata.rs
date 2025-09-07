@@ -11,7 +11,7 @@ use tokio::time::timeout;
 pub async fn get_metadata_by_url(
 	url: &YTUrl,
 	pool: &PgPool,
-	yt_service: impl YtService + Send + Sync + 'static,
+	yt_service: &dyn YtService,
 ) -> Result<VideoMetaData> {
 	let data = if let Ok(row) = sqlx::query!(
 		"SELECT subtitles, metadata FROM videos WHERE video_id = $1",

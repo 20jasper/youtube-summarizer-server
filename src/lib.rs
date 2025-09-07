@@ -1,8 +1,7 @@
 use crate::web::{
-	routes::routes,
+	routes::{AppState, routes},
 	services::env::{ApplicationSettings, AxiomSettings},
 };
-use sqlx::PgPool;
 use std::io;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
@@ -13,11 +12,14 @@ pub mod web;
 
 pub async fn run(
 	listener: TcpListener,
-	pool: PgPool,
+	app_state: AppState,
 	application: ApplicationSettings,
 ) -> io::Result<()> {
-	let routes = routes(pool, &application);
-	axum::serve(listener, routes.into_make_service()).await
+	axum::serve(
+		listener,
+		routes(app_state, &application).into_make_service(),
+	)
+	.await
 }
 
 #[allow(unused_variables, reason = "used only in axiom feature")]
