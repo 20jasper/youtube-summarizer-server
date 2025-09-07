@@ -2,6 +2,7 @@ use axum::response::sse;
 use core::pin::Pin;
 use futures::StreamExt as _;
 use sqlx::PgPool;
+use std::sync::Arc;
 use youtube_summarizer_server::web::clients::completions::stream::SseMessage;
 use youtube_summarizer_server::web::services::summary::summarize_by_url_stream;
 use youtube_summarizer_server::web::services::youtube::MockYtService;
@@ -20,13 +21,13 @@ async fn should_stream_cached_summary_and_end(
 	pool: PgPool,
 ) -> Result<(), Box<dyn std::error::Error>> {
 	let client = MockCompletion::new();
-	let yt = MockYtService::new();
+	let yt = Arc::new(MockYtService::new());
 
 	let url: YTUrl = format!("https://www.youtube.com/watch?v={TEST_ID}")
 		.as_str()
 		.try_into()?;
 
-	let _stream = summarize_by_url_stream(&url, pool.clone(), yt, client).await?;
+	let _stream = summarize_by_url_stream(&url, pool.clone(), yt.as_ref(), client).await?;
 
 	let row = sqlx::query!("SELECT summary FROM videos WHERE video_id = $1", TEST_ID)
 		.fetch_one(&pool)
@@ -70,14 +71,16 @@ async fn should_call_client_once_then_cache(
 			})
 		});
 
-	let stream = summarize_by_url_stream(&url, pool.clone(), MockYtService::new(), client).await?;
+	let yt_first = Arc::new(MockYtService::new());
+	let stream = summarize_by_url_stream(&url, pool.clone(), yt_first.as_ref(), client).await?;
 	let events: Vec<sse::Event> = stream.collect().await;
 	assert_eq!(events.len(), ms_clone.len());
 
 	let mut client = MockCompletion::new();
 	client.expect_post_stream().times(0);
 
-	let _stream = summarize_by_url_stream(&url, pool.clone(), MockYtService::new(), client).await?;
+	let yt_second = Arc::new(MockYtService::new());
+	let _stream = summarize_by_url_stream(&url, pool.clone(), yt_second.as_ref(), client).await?;
 
 	let row = sqlx::query!(
 		"SELECT summary FROM videos WHERE video_id = $1",

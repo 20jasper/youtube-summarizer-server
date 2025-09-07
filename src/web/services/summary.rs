@@ -21,7 +21,7 @@ use tokio_stream::wrappers::ReceiverStream;
 pub async fn summarize_by_url_stream(
 	url: &YTUrl,
 	pool: PgPool,
-	yt_service: impl YtService + Send + Sync + 'static,
+	yt_service: &dyn YtService,
 	client: impl CompletionClient + Clone + Send + Sync + 'static,
 ) -> Result<Pin<Box<dyn Stream<Item = sse::Event> + Send>>> {
 	if let Ok(row) = sqlx::query!(

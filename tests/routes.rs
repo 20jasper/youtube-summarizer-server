@@ -6,12 +6,13 @@ use axum::{
 };
 use mockall::predicate;
 use sqlx::PgPool;
+use std::sync::Arc;
 use tower::ServiceExt as _;
 use youtube_summarizer_server::{
 	error::ErrorMessage,
 	web::{
 		clients::yt_dlp::{VideoMetaData, metadata::VideoInfo},
-		routes::routes,
+		routes::{AppState, routes},
 		services::{
 			env::ApplicationSettings, metadata::get_metadata_by_url, youtube::MockYtService,
 		},
@@ -53,7 +54,8 @@ async fn should_get_and_cache_metadata(pool: PgPool) -> Result<()> {
 			})
 		});
 
-	let VideoMetaData { captions, metadata } = get_metadata_by_url(&url, &pool, yt_service).await?;
+	let VideoMetaData { captions, metadata } =
+		get_metadata_by_url(&url, &pool, &yt_service).await?;
 	assert_eq!(captions, CLEAN_VTT);
 	assert_eq!(metadata, mock_metadata);
 
@@ -73,7 +75,8 @@ async fn should_get_and_cache_metadata(pool: PgPool) -> Result<()> {
 		.expect_fetch_metadata()
 		.times(0);
 
-	let VideoMetaData { captions, metadata } = get_metadata_by_url(&url, &pool, yt_service).await?;
+	let VideoMetaData { captions, metadata } =
+		get_metadata_by_url(&url, &pool, &yt_service).await?;
 	assert_eq!(captions, CLEAN_VTT);
 	assert_eq!(metadata, mock_metadata);
 
@@ -92,7 +95,10 @@ async fn should_get_and_cache_metadata(pool: PgPool) -> Result<()> {
 
 async fn summary_error(pool: PgPool, url: &str, error_message: &str) -> Result<()> {
 	let routes = routes(
-		pool,
+		AppState {
+			pool,
+			yt_service: Arc::new(MockYtService::new()),
+		},
 		&ApplicationSettings {
 			port: 8000,
 			public_dir: "doesn't matter".into(),

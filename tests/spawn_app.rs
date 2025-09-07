@@ -1,11 +1,14 @@
 use core::net::{Ipv4Addr, SocketAddr};
 use reqwest::StatusCode;
 use sqlx::{PgConnection, PgPool};
+use std::sync::Arc;
 use tokio::net::TcpListener;
 use uuid::Uuid;
+use youtube_summarizer_server::web::routes::AppState;
 use youtube_summarizer_server::web::services::env::{
 	ApplicationSettings, DatabaseSettings, FromEnv as _,
 };
+use youtube_summarizer_server::web::services::youtube::MockYtService;
 
 #[tokio::test]
 #[rstest::rstest]
@@ -26,9 +29,11 @@ async fn spawns_non_conflicting_app_instances() {
 	assert_eq!(res.status(), StatusCode::OK);
 }
 
+#[allow(dead_code)]
 pub struct TestApp {
 	pub addr: String,
 	pub pool: PgPool,
+	pub yt_service: Arc<MockYtService>,
 }
 
 pub async fn setup_test_db(settings: &DatabaseSettings) -> sqlx::Pool<sqlx::Postgres> {
@@ -72,9 +77,13 @@ pub async fn spawn_app() -> TestApp {
 
 	let pool = setup_test_db(&db_settings).await;
 
+	let yt_service = Arc::new(MockYtService::new());
 	let server = youtube_summarizer_server::run(
 		listener,
-		pool.clone(),
+		AppState {
+			pool: pool.clone(),
+			yt_service: yt_service.clone(),
+		},
 		ApplicationSettings {
 			// Both don't matter
 			port: 0,
@@ -85,7 +94,8 @@ pub async fn spawn_app() -> TestApp {
 	tokio::spawn(server);
 
 	TestApp {
-		addr: format!("http://{addr}",),
+		addr: format!("http://{addr}"),
 		pool,
+		yt_service,
 	}
 }

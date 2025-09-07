@@ -13,7 +13,7 @@ const TEST_ID: &str = "TEST_ID";
 #[tokio::test]
 async fn should_submit_feedback_for_existing_summary() -> Result<()> {
 	let message = "rust is a must";
-	let TestApp { addr, pool } = spawn_app().await;
+	let TestApp { addr, pool, .. } = spawn_app().await;
 
 	sqlx::raw_sql(include_str!("fixtures/video_with_summary.sql"))
 		.execute(&pool)

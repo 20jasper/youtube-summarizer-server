@@ -1,9 +1,16 @@
 use core::net::{Ipv4Addr, SocketAddr};
 use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
+use std::sync::Arc;
 use tokio::net::TcpListener;
 use youtube_summarizer_server::{
 	init_tracing,
-	web::services::env::{DatabaseSettings, FromEnv, Settings},
+	web::{
+		routes::AppState,
+		services::{
+			env::{DatabaseSettings, FromEnv, Settings},
+			youtube::YtDlpService,
+		},
+	},
 };
 
 pub mod error;
@@ -38,7 +45,14 @@ async fn main() {
 
 	tracing::info!("Listening on http://{address}");
 
-	youtube_summarizer_server::run(listener, pool, settings.application)
-		.await
-		.unwrap();
+	youtube_summarizer_server::run(
+		listener,
+		AppState {
+			pool,
+			yt_service: Arc::new(YtDlpService::from_env().unwrap()),
+		},
+		settings.application,
+	)
+	.await
+	.unwrap();
 }
