@@ -1,26 +1,17 @@
 use crate::common::Result;
-use crate::common::body_to_string;
-use axum::{
-	body::Body,
-	http::{Request, StatusCode},
-};
 use mockall::predicate;
+use reqwest::StatusCode;
 use sqlx::PgPool;
-use std::sync::Arc;
-use tower::ServiceExt as _;
-use youtube_summarizer_server::{
-	error::ErrorMessage,
-	web::{
-		clients::yt_dlp::{VideoMetaData, metadata::VideoInfo},
-		routes::{AppState, routes},
-		services::{
-			env::ApplicationSettings, metadata::get_metadata_by_url, youtube::MockYtService,
-		},
-		utils::YTUrl,
-	},
+use youtube_summarizer_server::error::ErrorMessage;
+use youtube_summarizer_server::web::clients::yt_dlp::{VideoMetaData, metadata::VideoInfo};
+use youtube_summarizer_server::web::services::{
+	metadata::get_metadata_by_url, youtube::MockYtService,
 };
+use youtube_summarizer_server::web::utils::YTUrl;
 
 mod common;
+mod spawn_app;
+use spawn_app::{TestApp, spawn_app};
 
 const VTT: &str = include_str!("./test.vtt");
 const CLEAN_VTT: &str =
@@ -93,49 +84,24 @@ async fn should_get_and_cache_metadata(pool: PgPool) -> Result<()> {
 	Ok(())
 }
 
-async fn summary_error(pool: PgPool, url: &str, error_message: &str) -> Result<()> {
-	let routes = routes(
-		AppState {
-			pool,
-			yt_service: Arc::new(MockYtService::new()),
-		},
-		&ApplicationSettings {
-			port: 8000,
-			public_dir: "doesn't matter".into(),
-		},
-	);
+#[tokio::test]
+#[rstest::rstest]
+#[case("uhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh", "Invalid URL")]
+#[case("https://www.rustisamust.com/watch", "Unsupported URL")]
+async fn summary_url_validation_errors(#[case] url: &str, #[case] expected: &str) -> Result<()> {
+	let TestApp { addr, .. } = spawn_app().await;
 
-	let response = routes
-		.oneshot(
-			Request::builder()
-				.uri(format!("/summary?url={url}"))
-				.body(Body::empty())?,
-		)
+	let res = reqwest::Client::new()
+		.get(format!("{addr}/summary?url={url}"))
+		.send()
 		.await?;
 
-	assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+	assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 
-	let body = body_to_string(response).await?;
-
-	let ErrorMessage { error, message } = serde_json::from_str::<ErrorMessage>(&body)?;
-
-	assert!(message.contains(error_message));
-	assert!(message.contains(url));
+	let ErrorMessage { error, message } = serde_json::from_str(&res.text().await?)?;
 	assert!(error);
+	assert!(message.contains(expected));
+	assert!(message.contains(url));
 
 	Ok(())
-}
-
-#[sqlx::test]
-async fn invalid_url(pool: PgPool) -> Result<()> {
-	let url = "uhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh";
-	let error_message = "Invalid URL";
-	summary_error(pool, url, error_message).await
-}
-
-#[sqlx::test]
-async fn unsupported_url(pool: PgPool) -> Result<()> {
-	let url = "https://www.rustisamust.com/watch";
-	let error_message = "Unsupported URL";
-	summary_error(pool, url, error_message).await
 }
