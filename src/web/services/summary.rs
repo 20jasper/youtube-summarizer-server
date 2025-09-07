@@ -22,7 +22,7 @@ pub async fn summarize_by_url_stream(
 	url: &YTUrl,
 	pool: PgPool,
 	yt_service: &dyn YtService,
-	client: impl CompletionClient + Clone + Send + Sync + 'static,
+	client: impl CompletionClient + Clone + 'static,
 ) -> Result<Pin<Box<dyn Stream<Item = sse::Event> + Send>>> {
 	if let Ok(row) = sqlx::query!(
 		r"
@@ -131,7 +131,7 @@ async fn chunk_summary_oneshot(
 }
 
 async fn summary(
-	client: impl CompletionClient + Clone + Send + Sync + 'static,
+	client: impl CompletionClient + Clone + 'static,
 	transcript: &str,
 	size: usize,
 	overlap: usize,
@@ -150,7 +150,7 @@ async fn summary(
 }
 
 async fn multi_chunk_summary_stream(
-	client: impl CompletionClient + Clone + Send + Sync + 'static,
+	client: impl CompletionClient + Clone + 'static,
 	chunks: Vec<String>,
 	ctx: &PromptContext,
 ) -> Result<Pin<Box<dyn Stream<Item = SseMessage> + Send>>> {

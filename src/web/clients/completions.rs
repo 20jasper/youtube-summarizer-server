@@ -90,7 +90,7 @@ impl CompletionRequestBuilder {
 }
 
 #[automock]
-pub trait CompletionClient {
+pub trait CompletionClient: Send + Sync {
 	fn post<'a>(
 		&self,
 		prompt: &'a str,
