@@ -43,8 +43,8 @@ jobs:
       - name: Configure Dependency Caching
         uses: Swatinem/rust-cache@v2
 
-      - name: check formatting
-        run: just format-check
+      - name: lint
+        run: just lint
 
   build:
     runs-on: ubuntu-latest
