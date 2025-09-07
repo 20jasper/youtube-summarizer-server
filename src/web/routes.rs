@@ -9,7 +9,7 @@ pub mod summary;
 #[derive(Clone)]
 pub struct AppState {
 	pub pool: PgPool,
-	pub yt_service: Arc<dyn YtService + Send + Sync>,
+	pub yt_service: Arc<dyn YtService>,
 }
 
 pub fn routes(app_state: AppState, app: &ApplicationSettings) -> Router {
