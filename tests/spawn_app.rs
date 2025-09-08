@@ -1,12 +1,13 @@
 use core::net::{Ipv4Addr, SocketAddr};
 use reqwest::StatusCode;
 use sqlx::{PgConnection, PgPool};
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use tokio::net::TcpListener;
 use uuid::Uuid;
+use youtube_summarizer_server::init_tracing;
 use youtube_summarizer_server::web::routes::AppState;
 use youtube_summarizer_server::web::services::env::{
-	ApplicationSettings, DatabaseSettings, FromEnv as _,
+	ApplicationSettings, DatabaseSettings, FromEnv as _, RustSettings,
 };
 use youtube_summarizer_server::web::services::youtube::MockYtService;
 
@@ -66,7 +67,19 @@ pub async fn setup_test_db(settings: &DatabaseSettings) -> sqlx::Pool<sqlx::Post
 	pool
 }
 
+static TRACING: LazyLock<()> = LazyLock::new(|| {
+	let rust_settings = if std::env::var("TEST_LOG").is_ok() {
+		RustSettings::from_env().unwrap()
+	} else {
+		RustSettings { log: String::new() }
+	};
+
+	init_tracing(&rust_settings, None);
+});
+
 pub async fn spawn_app() -> TestApp {
+	LazyLock::force(&TRACING);
+
 	let listener = TcpListener::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0)))
 		.await
 		.unwrap();

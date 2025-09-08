@@ -67,6 +67,7 @@ from_env!(DatabaseSettings, "DB_");
 from_env!(OpenAISettings, "OPEN_AI_");
 from_env!(AxiomSettings, "AXIOM_");
 from_env!(ApplicationSettings, "APPLICATION_");
+from_env!(RustSettings, "RUST_");
 
 fn output_path() -> PathBuf {
 	"./transcripts".into()
@@ -114,6 +115,15 @@ pub struct AxiomSettings {
 	pub dataset: String,
 }
 
+fn rust_log() -> String {
+	"youtube_summarizer_server=trace,tower_http=debug,reqwest=debug".into()
+}
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct RustSettings {
+	#[serde(default = "rust_log")]
+	pub log: String,
+}
+
 fn port() -> u16 {
 	8080
 }
@@ -131,6 +141,7 @@ pub struct Settings {
 	pub open_ai: OpenAISettings,
 	pub youtube: YouTubeSettings,
 	pub axiom: Option<AxiomSettings>,
+	pub rust: RustSettings,
 }
 
 impl FromEnv for Settings {
@@ -141,6 +152,7 @@ impl FromEnv for Settings {
 			open_ai: OpenAISettings::from_env()?,
 			youtube: YouTubeSettings::from_env()?,
 			axiom: AxiomSettings::from_env().ok(),
+			rust: RustSettings::from_env()?,
 		})
 	}
 }

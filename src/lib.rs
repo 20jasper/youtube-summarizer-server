@@ -1,6 +1,6 @@
 use crate::web::{
 	routes::{AppState, routes},
-	services::env::{ApplicationSettings, AxiomSettings},
+	services::env::{ApplicationSettings, AxiomSettings, RustSettings},
 };
 use std::io;
 use tokio::net::TcpListener;
@@ -23,22 +23,17 @@ pub async fn run(
 }
 
 #[allow(unused_variables, reason = "used only in axiom feature")]
-pub fn init_tracing(settings: Option<&AxiomSettings>) {
+pub fn init_tracing(rust: &RustSettings, axiom: Option<&AxiomSettings>) {
 	use tracing_subscriber::{Layer as _, layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
-	let fmt_layer = tracing_subscriber::fmt::layer().with_filter(
-		EnvFilter::try_from_default_env()
-			.or_else(|_| {
-				EnvFilter::try_new("youtube_summarizer_server=trace,tower_http=debug,reqwest=trace")
-			})
-			.unwrap(),
-	);
+	let fmt_layer = tracing_subscriber::fmt::layer()
+		.with_filter(EnvFilter::try_new(rust.log.as_str()).unwrap());
 
 	let registry = tracing_subscriber::registry().with(fmt_layer);
 
 	#[cfg(feature = "axiom")]
 	{
-		let axiom_layer = settings.map(|AxiomSettings { dataset, .. }| {
+		let axiom_layer = axiom.map(|AxiomSettings { dataset, .. }| {
 			tracing_axiom::default(dataset).expect("failed to init axiom layer")
 		});
 		if axiom_layer.is_none() {
