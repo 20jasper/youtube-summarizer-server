@@ -6,7 +6,7 @@ use crate::web::clients::yt_dlp::VideoMetaData;
 use crate::web::services::env::{FromEnv, YouTubeSettings};
 use crate::web::utils::YTUrl;
 use mockall::automock;
-use reqwest::Url;
+use secrecy::SecretString;
 
 #[automock]
 pub trait YtService: Send + Sync + 'static {
@@ -15,12 +15,12 @@ pub trait YtService: Send + Sync + 'static {
 
 pub struct YtDlpService {
 	retries: u8,
-	proxy: Url,
+	proxy: SecretString,
 	output_path: PathBuf,
 }
 
 impl YtDlpService {
-	pub fn new(retries: u8, proxy: Url, output_path: PathBuf) -> Self {
+	pub fn new(retries: u8, proxy: SecretString, output_path: PathBuf) -> Self {
 		Self {
 			retries,
 			proxy,

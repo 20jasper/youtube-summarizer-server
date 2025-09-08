@@ -10,7 +10,7 @@ use crate::web::clients::yt_dlp::cache::Artifact;
 use crate::web::clients::yt_dlp::metadata::VideoInfo;
 use crate::web::utils::YTUrl;
 use derive_builder::Builder;
-use reqwest::Url;
+use secrecy::{ExposeSecret, SecretString};
 use std::path::PathBuf;
 use std::process::Command;
 use std::process::Output;
@@ -33,13 +33,13 @@ const FLAG_SUB_LANGS: &str = "--sub-langs";
 const FLAG_SUB_FORMAT: &str = "--sub-format";
 const FLAG_WRITE_INFO_JSON: &str = "--write-info-json";
 
-#[derive(Clone, Debug, Builder, PartialEq)]
+#[derive(Clone, Debug, Builder)]
 pub struct YtdlpClient {
 	#[builder(default)]
 	download_subtitles: bool,
 	#[builder(default = 3)]
 	retries: u8,
-	proxy: Url,
+	proxy: SecretString,
 	#[builder(default = PathBuf::from("./transcripts"))]
 	output_path: PathBuf,
 }
@@ -58,7 +58,7 @@ impl YtdlpClient {
 			.arg(FLAG_OUTPUT)
 			.arg(OUTPUT_TEMPLATE)
 			.arg(FLAG_PROXY)
-			.arg(self.proxy.as_str())
+			.arg(self.proxy.expose_secret())
 			.arg(FLAG_PATHS)
 			.arg(&self.output_path);
 
