@@ -32,7 +32,7 @@ async fn init_db(settings: DatabaseSettings) -> Result<Pool<Postgres>, sqlx::Err
 #[tokio::main]
 async fn main() {
 	let settings = Settings::from_env().unwrap();
-	init_tracing(settings.axiom.as_ref());
+	init_tracing(&settings.rust, settings.axiom.as_ref());
 
 	let address = SocketAddr::from((Ipv4Addr::UNSPECIFIED, settings.application.port));
 	let listener = TcpListener::bind(address)
