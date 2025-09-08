@@ -1,4 +1,5 @@
 use core::net::{Ipv4Addr, SocketAddr};
+use secrecy::ExposeSecret;
 use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -21,7 +22,11 @@ async fn init_db(settings: DatabaseSettings) -> Result<Pool<Postgres>, sqlx::Err
 	tracing::info!("Connecting to the database...");
 	let pool = PgPoolOptions::new()
 		.max_connections(5)
-		.connect(&settings.connection_string())
+		.connect(
+			settings
+				.connection_string()
+				.expose_secret(),
+		)
 		.await?;
 	sqlx::migrate!().run(&pool).await?;
 	tracing::info!("Connected to the database");
@@ -32,6 +37,7 @@ async fn init_db(settings: DatabaseSettings) -> Result<Pool<Postgres>, sqlx::Err
 #[tokio::main]
 async fn main() {
 	let settings = Settings::from_env().unwrap();
+
 	init_tracing(&settings.rust, settings.axiom.as_ref());
 
 	let address = SocketAddr::from((Ipv4Addr::UNSPECIFIED, settings.application.port));

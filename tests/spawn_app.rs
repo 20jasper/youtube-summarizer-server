@@ -1,5 +1,6 @@
 use core::net::{Ipv4Addr, SocketAddr};
 use reqwest::StatusCode;
+use secrecy::ExposeSecret;
 use sqlx::{PgConnection, PgPool};
 use std::sync::{Arc, LazyLock};
 use tokio::net::TcpListener;
@@ -47,17 +48,25 @@ pub async fn setup_test_db(settings: &DatabaseSettings) -> sqlx::Pool<sqlx::Post
 			..settings.clone()
 		};
 
-		PgConnection::connect(&maintenance_settings.connection_string())
-			.await
-			.expect("failed to connect to postgres")
-			.execute(format!(r#"CREATE DATABASE "{}""#, settings.name).as_str())
-			.await
-			.expect("failed to make new DB")
+		PgConnection::connect(
+			maintenance_settings
+				.connection_string()
+				.expose_secret(),
+		)
+		.await
+		.expect("failed to connect to postgres")
+		.execute(format!(r#"CREATE DATABASE "{}""#, settings.name).as_str())
+		.await
+		.expect("failed to make new DB")
 	};
 
-	let pool = PgPool::connect(&settings.connection_string())
-		.await
-		.expect("failed to connect to new db");
+	let pool = PgPool::connect(
+		settings
+			.connection_string()
+			.expose_secret(),
+	)
+	.await
+	.expect("failed to connect to new db");
 
 	sqlx::migrate!("./migrations")
 		.run(&pool)

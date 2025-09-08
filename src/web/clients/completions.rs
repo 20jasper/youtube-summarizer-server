@@ -8,6 +8,7 @@ use derive_builder::Builder;
 use futures::{Stream, StreamExt};
 use mockall::automock;
 use reqwest::{Client, Url};
+use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 
 const SYSTEM_ROLE: &str = "system";
@@ -103,15 +104,15 @@ pub trait CompletionClient: Send + Sync {
 	) -> impl Future<Output = Result<Pin<Box<dyn Stream<Item = SseMessage> + Send>>>>;
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct DeepInfraClient {
 	model: String,
 	url: Url,
-	api_key: String,
+	api_key: SecretString,
 }
 
 impl DeepInfraClient {
-	pub fn build(model: String, base_url: &Url, api_key: String) -> Result<Self> {
+	pub fn build(model: String, base_url: &Url, api_key: SecretString) -> Result<Self> {
 		const COMPLETIONS_PATH: &str = "chat/completions";
 		Ok(Self {
 			model,
@@ -166,7 +167,7 @@ impl DeepInfraClient {
 
 		let response = Client::new()
 			.post(self.url.as_ref())
-			.bearer_auth(&self.api_key)
+			.bearer_auth(self.api_key.expose_secret())
 			.json(&payload)
 			.send()
 			.await?;
