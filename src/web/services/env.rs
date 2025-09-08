@@ -1,4 +1,5 @@
 pub use error::{Error, Result};
+use secrecy::{ExposeSecret, SecretString};
 use std::path::PathBuf;
 
 mod error {
@@ -87,31 +88,36 @@ pub struct YouTubeSettings {
 #[derive(serde::Deserialize, Clone, Debug)]
 pub struct DatabaseSettings {
 	pub username: String,
-	pub password: String,
+	pub password: SecretString,
 	pub port: u16,
 	pub host: String,
 	pub name: String,
 }
 
 impl DatabaseSettings {
-	pub fn connection_string(&self) -> String {
+	pub fn connection_string(&self) -> SecretString {
 		format!(
 			"postgres://{}:{}@{}:{}/{}",
-			self.username, self.password, self.host, self.port, self.name
+			self.username,
+			self.password.expose_secret(),
+			self.host,
+			self.port,
+			self.name
 		)
+		.into()
 	}
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
 pub struct OpenAISettings {
-	pub api_key: String,
+	pub api_key: SecretString,
 	pub base_url: Url,
 	pub model: String,
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
 pub struct AxiomSettings {
-	pub token: String,
+	pub token: SecretString,
 	pub dataset: String,
 }
 
