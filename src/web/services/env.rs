@@ -78,7 +78,7 @@ fn retries() -> u8 {
 }
 #[derive(serde::Deserialize, Clone, Debug)]
 pub struct YouTubeSettings {
-	pub proxy: Url,
+	pub proxy: SecretString,
 	#[serde(default = "retries")]
 	pub retries: u8,
 	#[serde(default = "output_path")]
