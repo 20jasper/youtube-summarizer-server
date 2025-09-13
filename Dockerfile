@@ -9,6 +9,13 @@ ARG APP_NAME=youtube-summarizer-server
 
 WORKDIR /app
 
+FROM python:3.13-slim-bookworm AS pydeps
+WORKDIR /opt/py
+
+COPY requirements.txt requirements.txt
+# Install into a relocatable prefix we can later copy wholesale
+RUN pip install --no-cache-dir --prefix /install -r requirements.txt
+
 FROM chef AS planner
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
@@ -27,6 +34,7 @@ FROM python:3.13-slim-bookworm AS final
 WORKDIR /app
 
 ARG APP_NAME=youtube-summarizer-server
+COPY --from=pydeps /install /usr/local
 COPY --from=builder /app/target/release/${APP_NAME} /usr/local/bin
 
 COPY --from=builder /app/public /var/www
