@@ -15,29 +15,20 @@ services:
       args:
         - YT_DLP_NAME=yt-dlp
     ports:
-      - 6981:8080
+      - 8080:8080
     environment:
-      - APPLICATION_OUTPUT_PATH=${OUTPUT_PATH:-/var/dist}
       - YOUTUBE_PROXY=${YOUTUBE_PROXY:?must include proxy}
       - OPEN_AI_API_KEY=${OPEN_AI_API_KEY:?must include OpenAI API key}
       - OPEN_AI_BASE_URL=${OPEN_AI_BASE_URL:? must include OpenAI base URL}
       - OPEN_AI_MODEL=${OPEN_AI_MODEL:? must include OpenAI model}
-      - DATABASE_URL=postgresql://db:5432/example?user=postgres&password=password
       - DB_USERNAME=postgres
       - DB_NAME=example
       - DB_PORT=5432
       - DB_HOST=db
       - DB_PASSWORD=password
-      - APPLICATION_PUBLIC_DIR=/var/www
     depends_on:
       db:
         condition: service_healthy
-  # The commented out section below is an example of how to define a PostgreSQL
-  # database that your application can use. `depends_on` tells Docker Compose to
-  # start the database before your application. The `db-data` volume persists the
-  # database data between container restarts. The `db-password` secret is used
-  # to set the database password. You must create `db/password.txt` and add
-  # a password of your choosing to it before running `docker compose up`.
   db:
     image: postgres:17.5
     restart: always
@@ -58,9 +49,3 @@ services:
       retries: 5
 volumes:
   db-data:
-# volumes:
-#   db-data:
-# secrets:
-#   db-password:
-#     file: db/password.txt
-

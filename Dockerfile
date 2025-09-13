@@ -34,14 +34,15 @@ FROM python:3.13-slim-bookworm AS final
 WORKDIR /app
 
 ARG APP_NAME=youtube-summarizer-server
+
+ENV XDG_CACHE_HOME=/var/cache
+ENV YOUTUBE_CACHE_DIR=${XDG_CACHE_HOME}/yt-dlp
+ENV YOUTUBE_OUTPUT_PATH=${YOUTUBE_CACHE_DIR}
+ENV APPLICATION_PUBLIC_DIR=/var/www
+
 COPY --from=pydeps /install /usr/local
 COPY --from=builder /app/target/release/${APP_NAME} /usr/local/bin
-
-COPY --from=builder /app/public /var/www
-ENV PUBLIC_DIR=/var/www
-
-RUN pip install "yt-dlp[default,curl-cffi]" && \
-    pip install requests
+COPY --from=builder /app/public ${APPLICATION_PUBLIC_DIR}
 
 ARG UID=10001
 RUN adduser \
@@ -52,15 +53,14 @@ RUN adduser \
     --no-create-home \
     --uid "${UID}" \
     appuser && \
-    mkdir -p .cache/yt-dlp/ && \
-    chown -R appuser: .cache/yt-dlp/ && \
-    mkdir -p /var/transcripts/ && \
-    chown -R appuser: /var/transcripts/ && \
-    mkdir -p /var/dist/ && \
-    chown -R appuser: /var/dist/
+    mkdir -p ${YOUTUBE_CACHE_DIR} && \
+    chown -R appuser: ${YOUTUBE_CACHE_DIR} && \
+    mkdir -p ${YOUTUBE_OUTPUT_PATH} && \
+    chown -R appuser: ${YOUTUBE_OUTPUT_PATH}
 
 USER appuser
 
+ENV APPLICATION_PORT=8080
 EXPOSE 8080
 
 ENTRYPOINT ["/usr/local/bin/youtube-summarizer-server"]
