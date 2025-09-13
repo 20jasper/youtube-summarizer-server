@@ -79,7 +79,6 @@ impl YtdlpClient {
 		cmd.arg(FLAG_WRITE_INFO_JSON)
 			.arg(url.as_str());
 
-		tracing::info!("running yt-dlp command: {:?}", cmd);
 		let Output {
 			status,
 			stderr,
