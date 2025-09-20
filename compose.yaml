@@ -26,6 +26,7 @@ services:
       - DB_PORT=5432
       - DB_HOST=db
       - DB_PASSWORD=password
+      - DB_REQUIRE_SSL=false
     depends_on:
       db:
         condition: service_healthy

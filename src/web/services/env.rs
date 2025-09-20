@@ -1,6 +1,6 @@
 pub use error::{Error, Result};
 use secrecy::{ExposeSecret, SecretString};
-use sqlx::postgres::PgConnectOptions;
+use sqlx::postgres::{PgConnectOptions, PgSslMode};
 use std::path::PathBuf;
 
 mod error {
@@ -93,11 +93,19 @@ pub struct DatabaseSettings {
 	port: u16,
 	host: String,
 	database: String,
+	require_ssl: bool,
 }
 
 impl DatabaseSettings {
 	pub fn connection_options(&self) -> PgConnectOptions {
+		let ssl_mode = if self.require_ssl {
+			PgSslMode::Require
+		} else {
+			PgSslMode::Prefer
+		};
+
 		PgConnectOptions::new()
+			.ssl_mode(ssl_mode)
 			.host(&self.host)
 			.username(&self.username)
 			.host(&self.host)
