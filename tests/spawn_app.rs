@@ -1,6 +1,6 @@
 use core::net::{Ipv4Addr, SocketAddr};
 use reqwest::StatusCode;
-use secrecy::ExposeSecret;
+use sqlx::postgres::PgConnectOptions;
 use sqlx::{PgConnection, PgPool};
 use std::sync::{Arc, LazyLock};
 use tokio::net::TcpListener;
@@ -38,35 +38,25 @@ pub struct TestApp {
 	pub yt_service: Arc<MockYtService>,
 }
 
-pub async fn setup_test_db(settings: &DatabaseSettings) -> sqlx::Pool<sqlx::Postgres> {
+pub async fn setup_test_db(options: &PgConnectOptions) -> sqlx::Pool<sqlx::Postgres> {
 	use sqlx::Connection;
 	use sqlx::Executor;
 
 	{
-		let maintenance_settings = DatabaseSettings {
-			name: "postgres".into(),
-			..settings.clone()
-		};
+		let new_db_name = options.get_database().unwrap();
+		let maintenance = options.clone().database("postgres");
 
-		PgConnection::connect(
-			maintenance_settings
-				.connection_string()
-				.expose_secret(),
-		)
-		.await
-		.expect("failed to connect to postgres")
-		.execute(format!(r#"CREATE DATABASE "{}""#, settings.name).as_str())
-		.await
-		.expect("failed to make new DB")
+		PgConnection::connect_with(&maintenance)
+			.await
+			.expect("failed to connect to postgres")
+			.execute(format!(r#"CREATE DATABASE "{new_db_name}""#).as_str())
+			.await
+			.expect("failed to make new DB")
 	};
 
-	let pool = PgPool::connect(
-		settings
-			.connection_string()
-			.expose_secret(),
-	)
-	.await
-	.expect("failed to connect to new db");
+	let pool = PgPool::connect_with(options.clone())
+		.await
+		.expect("failed to connect to new db");
 
 	sqlx::migrate!("./migrations")
 		.run(&pool)
@@ -94,10 +84,12 @@ pub async fn spawn_app() -> TestApp {
 		.unwrap();
 	let addr = listener.local_addr().unwrap();
 
-	let mut db_settings = DatabaseSettings::from_env().unwrap();
-	db_settings.name = Uuid::new_v4().to_string();
+	let db_options = DatabaseSettings::from_env()
+		.unwrap()
+		.connection_options()
+		.database(&Uuid::new_v4().to_string());
 
-	let pool = setup_test_db(&db_settings).await;
+	let pool = setup_test_db(&db_options).await;
 
 	let yt_service = Arc::new(MockYtService::new());
 	let server = youtube_summarizer_server::run(
