@@ -1,5 +1,6 @@
 pub use error::{Error, Result};
 use secrecy::{ExposeSecret, SecretString};
+use sqlx::postgres::PgConnectOptions;
 use std::path::PathBuf;
 
 mod error {
@@ -87,24 +88,22 @@ pub struct YouTubeSettings {
 
 #[derive(serde::Deserialize, Clone, Debug)]
 pub struct DatabaseSettings {
-	pub username: String,
-	pub password: SecretString,
-	pub port: u16,
-	pub host: String,
-	pub name: String,
+	username: String,
+	password: SecretString,
+	port: u16,
+	host: String,
+	database: String,
 }
 
 impl DatabaseSettings {
-	pub fn connection_string(&self) -> SecretString {
-		format!(
-			"postgres://{}:{}@{}:{}/{}",
-			self.username,
-			self.password.expose_secret(),
-			self.host,
-			self.port,
-			self.name
-		)
-		.into()
+	pub fn connection_options(&self) -> PgConnectOptions {
+		PgConnectOptions::new()
+			.host(&self.host)
+			.username(&self.username)
+			.host(&self.host)
+			.port(self.port)
+			.database(&self.database)
+			.password(self.password.expose_secret())
 	}
 }
 
