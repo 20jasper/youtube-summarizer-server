@@ -1,2 +1,2 @@
-yt-dlp[default,curl-cffi]>=2025.9.5
+yt-dlp[default,curl-cffi]>=2025.9.26
 requests==2.32.5
