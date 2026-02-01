@@ -24,12 +24,14 @@ pub async fn run(
 
 #[allow(unused_variables, reason = "used only in axiom feature")]
 pub fn init_tracing(rust: &RustSettings, axiom: Option<&AxiomSettings>) {
-	use tracing_subscriber::{Layer as _, layer::SubscriberExt as _, util::SubscriberInitExt as _};
+	use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
-	let fmt_layer = tracing_subscriber::fmt::layer()
-		.with_filter(EnvFilter::try_new(rust.log.as_str()).unwrap());
+	let env_filter = EnvFilter::try_new(rust.log.as_str()).unwrap();
+	let fmt_layer = tracing_subscriber::fmt::layer();
 
-	let registry = tracing_subscriber::registry().with(fmt_layer);
+	let registry = tracing_subscriber::registry()
+		.with(env_filter)
+		.with(fmt_layer);
 
 	#[cfg(feature = "axiom")]
 	{
