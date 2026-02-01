@@ -129,7 +129,7 @@ pub struct AxiomSettings {
 }
 
 fn rust_log() -> String {
-	"youtube_summarizer_server=trace,tower_http=debug,reqwest=debug".into()
+	"youtube_summarizer_server=info,tower_http=warn,reqwest=warn,h2=warn".into()
 }
 #[derive(serde::Deserialize, Clone, Debug)]
 pub struct RustSettings {
