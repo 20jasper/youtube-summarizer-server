@@ -31,6 +31,12 @@ RUN cargo build --release --bin ${APP_NAME} --features "axiom"
 
 FROM python:3.13-slim-bookworm AS final
 
+# Install Deno
+RUN apt-get update && \
+    apt-get install -y curl unzip && \
+    curl -fsSL https://deno.land/install.sh | sh && \
+    mv /root/.deno/bin/deno /usr/local/bin/deno
+
 WORKDIR /app
 
 ARG APP_NAME=youtube-summarizer-server

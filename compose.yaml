@@ -22,7 +22,7 @@ services:
       - OPEN_AI_BASE_URL=${OPEN_AI_BASE_URL:? must include OpenAI base URL}
       - OPEN_AI_MODEL=${OPEN_AI_MODEL:? must include OpenAI model}
       - DB_USERNAME=postgres
-      - DB_NAME=example
+      - DB_DATABASE=example
       - DB_PORT=5432
       - DB_HOST=db
       - DB_PASSWORD=password

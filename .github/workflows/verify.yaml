@@ -79,7 +79,7 @@ jobs:
       DB_PASSWORD: "postgres"
       DB_PORT: "5432"
       DB_HOST: "localhost"
-      DB_NAME: "postgres"
+      DB_DATABASE: "postgres"
       DB_REQUIRE_SSL: "false"
       TEST_LOG: "true"
 
