@@ -14,7 +14,7 @@ derive_builder = "0.20.2"
 derive_more = { version = "2.0.1", features = ["from"] }
 dotenvy = { version = "0.15.7", optional = true }
 envy = "0.4.2"
-futures = "0.3.31"
+futures = "0.3.32"
 mockall = "0.13.1"
 regex = "1.12.3"
 reqwest = { version = "0.12.23", features = ["json", "stream"] }
